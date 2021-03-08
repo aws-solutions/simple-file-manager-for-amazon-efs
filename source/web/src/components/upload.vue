@@ -37,7 +37,7 @@ export default {
           method: 'post',
           //timeout: 0,
           maxFilesize: 2048, // megabytes
-          chunkSize: test_download.py, // bytes
+          chunkSize: 1000000, // bytes
           //parallelChunkUploads: true,
           //retryChunks: true,
           // "Accept": "Application/Octet-Stream", 
