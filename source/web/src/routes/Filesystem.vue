@@ -19,7 +19,7 @@
                     <b-icon icon="folder-plus" aria-hidden="true"></b-icon>
                     </b-button>
                     <b-modal id="dir-modal">
-                        <makedir v-bind:nav="navObjects"/>
+                        <makedir @dirCreated=refresh v-bind:nav="navObjects"/>
                     </b-modal>
                 </b-col>
             </b-row>
@@ -39,7 +39,7 @@
                 </b-col>
                 <b-col>
                     <b-form-checkbox v-model="editEnabled" name="editEnableButton" switch>
-                        Edit Mode
+                        Delete Mode
                     </b-form-checkbox>
                 </b-col>
                 <b-col cols="4">
@@ -48,7 +48,7 @@
                         <b-icon icon="box-arrow-up" aria-hidden="true"></b-icon>
                     </b-button>
                     <b-modal id="file-modal">
-                        <upload v-bind:nav="navObjects"/>
+                        <upload @uploadCompleted=refresh v-bind:nav="navObjects"/>
                     </b-modal>
                 </b-col>
             </b-row>
@@ -61,14 +61,14 @@
                         {{data.value}}
                     </b-col>
                     <div v-if="editEnabled">
-                    <b-col cols="1">
+                    <!-- <b-col cols="1">
                         <b-button variant="outline-warning">
                             <b-icon icon="pencil"></b-icon>
                         </b-button>
                     </b-col>
-                    <br>
+                    <br> -->
                     <b-col cols="1">
-                        <b-button variant="outline-danger">
+                        <b-button @click=deleteFile(data.value) variant="outline-danger">
                             <b-icon icon="trash"></b-icon>
                         </b-button>
                     </b-col>
@@ -113,6 +113,11 @@ export default {
       this.retrieveObjects()
   },
   methods: {
+      refresh () {
+          this.dirs = []
+          this.files = []
+          this.retrieveObjects()
+      },
       navigateBack () {
           if (this.navObjects.length > 1) {
               this.navObjects.pop()
@@ -137,6 +142,24 @@ export default {
             this.dirs.push(tmp_item)
         }
       },
+      async deleteFile (name) {
+          let requestParams = { 
+              queryStringParameters: {  
+                path: this.navObjects[this.navObjects.length - 1].to.query.path,
+                name: name
+            }
+          };
+          try {
+              let response = await API.del('fileManagerApi', '/api/objects/' + this.$route.params.id, requestParams)
+              console.log(response)
+              alert(JSON.stringify(response))
+              this.refresh()
+          }
+          catch (error) {
+              alert('Unable to delete file, check api logs')
+              console.log(error)
+          }
+        },
       addDirectoryObject (directory) {
           this.navObjects[this.navObjects.length - 1].active = false
           let existingPath = this.navObjects[this.navObjects.length - 1].to.query.path

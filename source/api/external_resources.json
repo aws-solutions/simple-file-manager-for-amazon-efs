@@ -1,0 +1,31 @@
+{
+  "Parameters": {
+    "DeploymentPackageBucket": {
+      "Type": "String",
+      "Description": "Bucket that contains the dataplane deployment package"
+    },
+    "DeploymentPackageKey": {
+      "Type": "String",
+      "Description": "S3 Key of the dataplane deployment package"
+    },
+    "botoConfig": {
+      "Type": "String",
+      "Description": "Botocore config"
+    }
+  },
+  "Resources": {
+    "APIHandler": {
+      "Properties": {
+        "Runtime": "python3.8",
+        "Environment": {
+          "Variables": {
+                "botoConfig": {
+                  "Ref": "botoConfig"
+                }
+            }
+        },
+        "CodeUri": {"Bucket":  {"Ref": "DeploymentPackageBucket"}, "Key":  {"Ref": "DeploymentPackageKey"}}
+      }
+    }
+  }
+}

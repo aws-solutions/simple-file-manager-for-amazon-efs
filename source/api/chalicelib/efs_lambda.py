@@ -1,6 +1,7 @@
 import os
 from os import walk
 import base64
+import math
 # File manager operation events:
 # list: {"operation": "list", "path": "$dir"}
 # upload: {"operation": "upload", "path": "$dir", "form_data": "$form_data"}
@@ -11,7 +12,18 @@ def modify(event):
 
 
 def delete(event):
-    return None
+    print(event)
+    path = event['path']
+    name = event['name']
+
+    file = path + '/' + name
+
+    try:
+        os.remove(file)
+    except OSError:
+        return {"message": "couldn't delete the file", "statusCode": 500}
+    else:
+        return {"message": "file deletion successful", "statusCode": 200}
 
 
 def make_dir(event):
@@ -63,6 +75,52 @@ def upload(event):
         return {"message": "Chunk upload successful", "statusCode": 200}
 
 
+def download(event):
+    # first call {"path": "./", "filename": "test.txt"}
+    # successive calls
+    # {"path": "./", "filename": "test_video.mp4", "form_data": {'dzchunkindex': chunk['dzchunkindex'],
+    # 'dzchunkbyteoffset': chunk['dzchunkbyteoffset']}}
+    path = event['path']
+    filename = event['filename']
+    file_path = os.path.join(path, filename)
+    chunk_size = 2000000  # bytes
+    file_size = os.path.getsize(file_path)
+    chunks = math.ceil(file_size / chunk_size)
+
+    if "form_data" in event:
+        start_index = event['form_data']['dzchunkbyteoffset']
+        current_chunk = event['form_data']['dzchunkindex']
+        try:
+            with open(file_path, 'rb') as f:
+                f.seek(start_index)
+                file_content = f.read(chunk_size)
+                encoded_chunk_content = str(base64.b64encode(file_content), 'utf-8')
+                chunk_offset = start_index + chunk_size
+                chunk_number = current_chunk + 1
+
+                return {"dzchunkindex": chunk_number, "dztotalchunkcount": chunks, "dzchunkbyteoffset": chunk_offset,
+                        "chunk_data": encoded_chunk_content, "dztotalfilesize": file_size}
+        except OSError as error:
+            print('Could not read file: {error}'.format(error=error))
+            return {"message": "couldn't read the file from disk", "statusCode": 500}
+
+    else:
+        start_index = 0
+        try:
+            with open(file_path, 'rb') as f:
+                f.seek(start_index)
+                file_content = f.read(chunk_size)
+                encoded_chunk_content = str(base64.b64encode(file_content), 'utf-8')
+                chunk_number = 0
+                chunk_offset = chunk_size
+
+                return {"dzchunkindex": chunk_number, "dztotalchunkcount": chunks, "dzchunkbyteoffset": chunk_offset,
+                        "chunk_data": encoded_chunk_content, "dztotalfilesize": file_size}
+
+        except OSError as error:
+            print('Could not read file: {error}'.format(error=error))
+            return {"message": "couldn't read the file from disk", "statusCode": 500}
+
 
 def list(event):
     # get path to list
@@ -103,7 +161,11 @@ def lambda_handler(event, context):
         if operation_type == 'modify':
             modify(event)
         if operation_type == 'delete':
-            delete(event)
+            delete_result = delete(event)
+            return delete_result
         if operation_type == 'make_dir':
             make_dir_result = make_dir(event)
             return make_dir_result
+        if operation_type == 'download':
+            download_result = download(event)
+            return download_result

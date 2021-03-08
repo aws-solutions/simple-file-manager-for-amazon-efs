@@ -4,18 +4,18 @@
         <h1>Filesystem: {{ $route.params.id }}</h1>
         <b-row>
             <b-col>
-                <h3> Mount Targets </h3>
-                {{netinfo}}
+                <br>
+                <br>
+                <br>
+                <br>
+                <h3> Mount Target Network Information</h3>
+                <p>{{netinfo}}</p>
             </b-col>
             <b-col align-self="center">
-                <b-form @submit="onSubmit" inline>
-                        <h3> Create manager lambda</h3>
-                        <b-input
-                            id="inline-form-input-mounttarget"
-                            class="mb-2 mr-sm-2 mb-sm-0"
-                            placeholder="enter a mount target id"
-                            v-model="form.mountTarget"
-                        ></b-input>
+                <b-form @submit="onSubmit">
+                        <h3> Create file manager lambda</h3>
+                        <p> Select a mount point to attach to:</p>
+                        <b-form-select v-model="selected" :options="options"></b-form-select>
                         <br>
                         <br>
                         <b-button type="submit">
@@ -24,7 +24,8 @@
                 </b-button>
                 </b-form>
             </b-col>
-            <b-col></b-col>
+            <b-col>
+            </b-col>
         </b-row>
     </b-container>
   </div>
@@ -40,16 +41,23 @@ export default {
         netinfo: null,
         form: {
             mountTarget: null
-        }
+        },
+        selected: null
     }
   },
   created: function () {
       this.getFilesystemNetinfo()
   },
+  computed: {
+      options: function () {
+          let mountTargetNames = Object.keys(this.netinfo)
+          return mountTargetNames
+      }
+  },
   methods: {
       onSubmit(evt) {
         evt.preventDefault()
-        let mountTarget = this.form.mountTarget
+        let mountTarget = this.selected
         let mountTargetNetinfo = this.netinfo[mountTarget]
         this.createManagerLambda(mountTargetNetinfo)
       },

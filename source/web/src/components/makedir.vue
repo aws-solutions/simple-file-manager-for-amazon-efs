@@ -58,6 +58,7 @@ export default {
           try {
               let response = await API.post('fileManagerApi', '/api/objects/' + this.$route.params.id + '/dir', params)
               alert(JSON.stringify(response))
+              this.$emit('dirCreated')
           }
           catch (error) {
               alert('Unable to create directory, check api logs')

@@ -6,7 +6,7 @@
         <h2>Upload</h2>
           <p> Path: {{ path }}</p>
           <div v-if=urlLoaded>
-            <vue-dropzone ref="myVueDropzone" id="dropzone" :options="dropzoneOptions"></vue-dropzone>
+            <vue-dropzone ref="myVueDropzone" id="dropzone" :options="dropzoneOptions" @vdropzone-complete="afterComplete"></vue-dropzone>
           </div>
     </b-col>
   </b-row>
@@ -31,11 +31,15 @@ export default {
     dropzoneOptions: function () {
       let options = {
           paramName: 'file',
-          url: 'https://sjnxjmy7z3.execute-api.us-west-2.amazonaws.com/api/upload/' + this.$route.params.id + '?path=' + this.path,
+          url: 'https://i076sdxd27.execute-api.us-west-2.amazonaws.com/api/upload/' + this.$route.params.id + '?path=' + this.path,
           chunking: true,
           forceChunking: true,
+          method: 'post',
+          //timeout: 0,
           maxFilesize: 2048, // megabytes
-          chunkSize: 1000000, // bytes
+          chunkSize: test_download.py, // bytes
+          //parallelChunkUploads: true,
+          //retryChunks: true,
           // "Accept": "Application/Octet-Stream", 
           //"Content-Type": "Application/Octet-Stream", '
           headers: {'Cache-Control': null, 'X-Requested-With': null}
@@ -49,6 +53,11 @@ export default {
   data () {
     return {
       urlLoaded: false
+    }
+  },
+  methods: {
+    afterComplete() {
+      this.$emit('uploadCompleted')
     }
   }
 }

@@ -1,74 +1,293 @@
 #!/bin/bash
+###############################################################################
+# Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 #
-# This assumes all of the OS-level configuration has been completed and git repo has already been cloned
+# PURPOSE:
+#   Build cloud formation templates for the %%%%%%%%
+# USAGE:
+#  ./build-s3-dist.sh [-h] [-v] [--no-layer] --template-bucket {TEMPLATE_BUCKET} --code-bucket {CODE_BUCKET} --version {VERSION} --region {REGION}
+#    TEMPLATE_BUCKET should be the name for the S3 bucket location where %%%%
+#      cloud formation templates should be saved.
+#    CODE_BUCKET should be the name for the S3 bucket location where cloud
+#      formation templates should find Lambda source code packages.
+#    VERSION should be in a format like v1.0.0
+#    REGION needs to be in a format like us-east-1
 #
-# This script should be run from the repo's deployment directory
-# cd deployment
-# ./build-s3-dist.sh source-bucket-base-name solution-name version-code
+#    The following options are available:
 #
-# Paramenters:
-#  - source-bucket-base-name: Name for the S3 bucket location where the template will source the Lambda
-#    code from. The template will append '-[region_name]' to this bucket name.
-#    For example: ./build-s3-dist.sh solutions my-solution v1.0.0
-#    The template will then expect the source code to be located in the solutions-[region_name] bucket
-#
-#  - solution-name: name of the solution for consistency
-#
-#  - version-code: version of the package
+#     -h | --help       Print usage
+#     -v | --verbose    Print script debug info
 
-# Check to see if input has been provided:
-if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-    echo "Please provide the base source bucket name, trademark approved solution name and version where the lambda code will eventually reside."
-    echo "For example: ./build-s3-dist.sh solutions trademarked-solution-name v1.0.0"
-    exit 1
+#
+###############################################################################
+
+trap cleanup_and_die SIGINT SIGTERM ERR
+
+usage() {
+  msg "$msg"
+  cat <<EOF
+Usage: $(basename "${BASH_SOURCE[0]}") [-h] [-v] --template-bucket TEMPLATE_BUCKET --code-bucket CODE_BUCKET --version VERSION --region REGION
+Available options:
+-h, --help        Print this help and exit (optional)
+-v, --verbose     Print script debug info (optional)
+--template-bucket S3 bucket to put cloud formation templates
+--code-bucket     S3 bucket to put Lambda code packages
+--version         Arbitrary string indicating build version
+--region          AWS Region, formatted like us-west-2
+EOF
+  exit 1
+}
+
+cleanup_and_die() {
+  trap - SIGINT SIGTERM ERR
+  echo "Trapped signal."
+  cleanup
+  die 1
+}
+
+cleanup() {
+  # Deactivate and remove the temporary python virtualenv used to run this script
+  if [[ "$VIRTUAL_ENV" != "" ]];
+  then
+    deactivate
+    #rm -rf "$VENV"
+    echo "------------------------------------------------------------------------------"
+    echo "Cleaning up complete"
+    echo "------------------------------------------------------------------------------"
+  fi
+}
+
+msg() {
+  echo >&2 -e "${1-}"
+}
+
+die() {
+  local msg=$1
+  local code=${2-1} # default exit status 1
+  msg "$msg"
+  exit "$code"
+}
+
+parse_params() {
+  # default values of variables set from params
+  flag=0
+  param=''
+
+  while :; do
+    case "${1-}" in
+    -h | --help) usage ;;
+    -v | --verbose) set -x ;;
+    --template-bucket)
+      global_bucket="${2}"
+      shift
+      ;;
+    --code-bucket)
+      regional_bucket="${2}"
+      shift
+      ;;
+    --version)
+      version="${2}"
+      shift
+      ;;
+    --region)
+      region="${2}"
+      shift
+      ;;
+    -?*) die "Unknown option: $1" ;;
+    *) break ;;
+    esac
+    shift
+  done
+
+  args=("$@")
+
+  # check required params and arguments
+  [[ -z "${global_bucket}" ]] && usage "Missing required parameter: template-bucket"
+  [[ -z "${regional_bucket}" ]] && usage "Missing required parameter: code-bucket"
+  [[ -z "${version}" ]] && usage "Missing required parameter: version"
+  [[ -z "${region}" ]] && usage "Missing required parameter: region"
+
+  return 0
+}
+
+parse_params "$@"
+msg "Build parameters:"
+msg "- Template bucket: ${global_bucket}"
+msg "- Code bucket: ${regional_bucket}-${region}"
+msg "- Version: ${version}"
+msg "- Region: ${region}"
+
+
+echo ""
+sleep 3
+s3domain="s3.$region.amazonaws.com"
+
+# Check if region is supported:
+if [ "$region" != "us-east-1" ] &&
+   [ "$region" != "us-east-2" ] &&
+   [ "$region" != "us-west-1" ] &&
+   [ "$region" != "us-west-2" ] &&
+   [ "$region" != "eu-west-1" ] &&
+   [ "$region" != "eu-west-2" ] &&
+   [ "$region" != "eu-central-1" ] &&
+   [ "$region" != "ap-south-1" ] &&
+   [ "$region" != "ap-northeast-1" ] &&
+   [ "$region" != "ap-southeast-1" ] &&
+   [ "$region" != "ap-southeast-2" ] &&
+   [ "$region" != "ap-northeast-1" ] &&
+   [ "$region" != "ap-northeast-2" ]; then
+   echo "ERROR. Not not supported in region $region"
+   exit 1
+fi
+
+# Build source S3 Bucket
+if [[ ! -x "$(command -v aws)" ]]; then
+echo "ERROR: This script requires the AWS CLI to be installed. Please install it then run again."
+exit 1
 fi
 
 # Get reference for all important folders
-template_dir="$PWD"
-template_dist_dir="$template_dir/global-s3-assets"
-build_dist_dir="$template_dir/regional-s3-assets"
-source_dir="$template_dir/../source"
+build_dir="$PWD"
+global_dist_dir="$build_dir/global-s3-assets"
+regional_dist_dir="$build_dir/regional-s3-assets"
+dist_dir="$build_dir/dist"
+source_dir="$build_dir/../source"
+
+# Create and activate a temporary Python environment for this script.
+echo "------------------------------------------------------------------------------"
+echo "Creating a temporary Python virtualenv for this script"
+echo "------------------------------------------------------------------------------"
+python -c "import os; print (os.getenv('VIRTUAL_ENV'))" | grep -q None
+if [ $? -ne 0 ]; then
+    echo "ERROR: Do not run this script inside Virtualenv. Type \`deactivate\` and run again.";
+    exit 1;
+fi
+echo "Using virtual python environment:"
+VENV=$(mktemp -d) && echo "$VENV"
+command -v python3 > /dev/null
+if [ $? -ne 0 ]; then
+    echo "ERROR: install Python3 before running this script"
+    exit 1
+fi
+
+command -v node > /dev/null
+if [ $? -ne 0 ]; then
+    echo "ERROR: install node before running this script"
+    exit 1
+fi
+
+python3 -m venv "$VENV"
+source "$VENV"/bin/activate
+pip3 install wheel
+pip3 install --quiet boto3 chalice requests_toolbelt
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to install required Python libraries."
+    exit 1
+fi
 
 echo "------------------------------------------------------------------------------"
-echo "[Init] Clean old dist, node_modules and bower_components folders"
+echo "Create distribution directory"
 echo "------------------------------------------------------------------------------"
-echo "rm -rf $template_dist_dir"
-rm -rf $template_dist_dir
-echo "mkdir -p $template_dist_dir"
-mkdir -p $template_dist_dir
-echo "rm -rf $build_dist_dir"
-rm -rf $build_dist_dir
-echo "mkdir -p $build_dist_dir"
-mkdir -p $build_dist_dir
+
+# Setting up directories
+echo "rm -rf $global_dist_dir"
+rm -rf "$global_dist_dir"
+echo "mkdir -p $global_dist_dir"
+mkdir -p "$global_dist_dir"
+echo "mkdir -p $global_dist_dir/website"
+mkdir -p "$global_dist_dir"/website
+echo "rm -rf $regional_dist_dir"
+rm -rf "$regional_dist_dir"
+echo "mkdir -p $regional_dist_dir"
+mkdir -p "$regional_dist_dir"
 
 echo "------------------------------------------------------------------------------"
-echo "[Packing] Templates"
+echo "CloudFormation Templates"
 echo "------------------------------------------------------------------------------"
-echo "cp $template_dir/*.template $template_dist_dir/"
-cp $template_dir/*.template $template_dist_dir/
-echo "copy yaml templates and rename"
-cp $template_dir/*.yaml $template_dist_dir/
-cd $template_dist_dir
-# Rename all *.yaml to *.template
-for f in *.yaml; do 
-    mv -- "$f" "${f%.yaml}.template"
-done
 
-cd ..
-echo "Updating code source bucket in template with $1"
-replace="s/%%BUCKET_NAME%%/$1/g"
-echo "sed -i '' -e $replace $template_dist_dir/*.template"
-sed -i '' -e $replace $template_dist_dir/*.template
-replace="s/%%SOLUTION_NAME%%/$2/g"
-echo "sed -i '' -e $replace $template_dist_dir/*.template"
-sed -i '' -e $replace $template_dist_dir/*.template
-replace="s/%%VERSION%%/$3/g"
-echo "sed -i '' -e $replace $template_dist_dir/*.template"
-sed -i '' -e $replace $template_dist_dir/*.template
+echo "Preparing template files:"
+cp "$build_dir/efs-file-manager.yaml" "$global_dist_dir/efs-file-manager.template"
+find "$global_dist_dir"
+echo "Updating template source bucket in template files with '$global_bucket'"
+echo "Updating code source bucket in template files with '$regional_bucket'"
+echo "Updating solution version in template files with '$version'"
+new_global_bucket="s/%%GLOBAL_BUCKET_NAME%%/$global_bucket/g"
+new_regional_bucket="s/%%REGIONAL_BUCKET_NAME%%/$regional_bucket/g"
+new_version="s/%%VERSION%%/$version/g"
+# Update templates in place. Copy originals to [filename].orig
+sed -i.orig -e "$new_global_bucket" "$global_dist_dir/efs-file-manager.template"
+sed -i.orig -e "$new_regional_bucket" "$global_dist_dir/efs-file-manager.template"
+sed -i.orig -e "$new_version" "$global_dist_dir/efs-file-manager.template"
 
 echo "------------------------------------------------------------------------------"
-echo "[Rebuild] Example Function"
+echo "Build API"
 echo "------------------------------------------------------------------------------"
-cd $source_dir/example-function-js
-npm run build
-cp ./dist/example-function-js.zip $build_dist_dir/example-function-js.zip
+
+echo "Building API Lambda function"
+cd "$source_dir/api" || exit 1
+[ -e dist ] && rm -rf dist
+mkdir -p dist
+if ! [ -x "$(command -v chalice)" ]; then
+  echo 'Chalice is not installed. It is required for this solution. Exiting.'
+  exit 1
+fi
+
+# Remove chalice deployments to force redeploy when there are changes to configuration only
+# Otherwise, chalice will use the existing deployment package
+[ -e .chalice/deployments ] && rm -rf .chalice/deployments
+
+echo "running chalice..."
+chalice --debug package --merge-template external_resources.json dist
+echo "...chalice done"
+echo "cp ./dist/sam.json $global_dist_dir/file-manager-api-stack.template"
+cp dist/sam.json "$global_dist_dir"/file-manager-api-stack.template
+if [ $? -ne 0 ]; then
+  echo "ERROR: Failed to build api template"
+  exit 1
+fi
+echo "cp ./dist/deployment.zip $regional_dist_dir/filemanagerapi.zip"
+cp ./dist/deployment.zip "$regional_dist_dir"/filemanagerapi.zip
+if [ $? -ne 0 ]; then
+  echo "ERROR: Failed to build api package"
+  exit 1
+fi
+rm -rf ./dist
+
+#
+#echo "------------------------------------------------------------------------------"
+#echo "Website"
+#echo "------------------------------------------------------------------------------"
+#
+#echo "Building Vue.js website"
+#cd "$source_dir/web" || exit 1
+#echo "Installing node dependencies"
+#npm install
+#echo "Compiling the vue app"
+#npm run build
+#echo "Built demo webapp"
+
+
+echo "------------------------------------------------------------------------------"
+echo "Copy dist to S3"
+echo "------------------------------------------------------------------------------"
+cd "$build_dir"/ || exit 1
+echo "Copying the prepared distribution to:"
+echo "s3://$global_bucket/efs_file_manager/$version/"
+echo "s3://${regional_bucket}-${region}/efs_file_manager/$version/"
+set -x
+aws s3 sync $global_dist_dir s3://$global_bucket/efs_file_manager/$version/
+aws s3 sync $regional_dist_dir s3://${regional_bucket}-${region}/efs_file_manager/$version/
+set +x
+
+echo "------------------------------------------------------------------------------"
+echo "S3 packaging complete"
+echo "------------------------------------------------------------------------------"
+
+echo ""
+echo "Template to deploy:"
+echo "TEMPLATE='"https://"$global_bucket"."$s3domain"/efs_file_manager/"$version"/efs-file-manager.template"'"
+
+cleanup
+echo "Done"
+exit 0

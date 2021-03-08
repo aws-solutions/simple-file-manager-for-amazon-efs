@@ -317,7 +317,7 @@ def create_filesystem_lambda(filesystem_id):
     else:
         return response
 
-
+# TODO: Change this url path to /objects/$fsid/upload
 @app.route('/upload/{filesystem_id}', methods=["POST"], content_types=['multipart/form-data'], cors=True)
 def upload(filesystem_id):
     if app.current_request.query_params['path']:
@@ -362,6 +362,35 @@ def upload(filesystem_id):
         raise ChaliceViewError('Error uploading file: {payload}'.format(payload=payload))
 
 
+@app.route('/download/{filesystem_id}', methods=["GET"], cors=True)
+def download(filesystem_id):
+    print(app.current_request.query_params)
+    try:
+        path = app.current_request.query_params['path']
+        filename = app.current_request.query_params['filename']
+    except KeyError as e:
+        app.log.error('Missing required query param: {e}'.format(e=e))
+        raise BadRequestError('Missing required query param: {e}'.format(e=e))
+    else:
+        if 'dzchunkindex' and 'dzchunkbyteoffset' in app.current_request.query_params:
+            chunk_index = app.current_request.query_params['dzchunkindex']
+            chunk_offset = app.current_request.query_params['dzchunkbyteoffset']
+            filemanager_event = {"operation": "download", "path": path, "filename": filename,
+                                 "form_data": {"dzchunkindex": int(chunk_index), "dzchunkbyteoffset": int(chunk_offset)}}
+            operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
+            payload_encoded = operation_result['Payload']
+            payload = json.loads(payload_encoded.read().decode("utf-8"))
+            return payload
+        elif 'dzchunkindex' and 'dzchunkbyteoffset' not in app.current_request.query_params:
+            filemanager_event = {"operation": "download", "path": path, "filename": filename}
+            operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
+            payload_encoded = operation_result['Payload']
+            payload = json.loads(payload_encoded.read().decode("utf-8"))
+            return payload
+        else:
+            raise BadRequestError('Unsupported or missing query params')
+
+
 @app.route('/objects/{filesystem_id}/dir', methods=['POST'], content_types=['application/x-www-form-urlencoded'], cors=True)
 def make_dir(filesystem_id):
     try:
@@ -372,6 +401,30 @@ def make_dir(filesystem_id):
         raise BadRequestError('Missing required query param: {e}'.format(e=e))
     else:
         filemanager_event = {"operation": "make_dir", "path": path, "name": name}
+        operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
+        # TODO: Fix this to also parse payload for status code
+
+        if operation_result['StatusCode'] == 200:
+            payload_encoded = operation_result['Payload']
+            payload = json.loads(payload_encoded.read().decode("utf-8"))
+            return payload
+        else:
+            payload_encoded = operation_result['Payload']
+            payload = json.loads(payload_encoded.read().decode("utf-8"))
+            app.log.error(payload)
+            raise ChaliceViewError('Error creating dir: {payload}'.format(payload=payload))
+
+
+@app.route('/objects/{filesystem_id}', methods=['DELETE'], cors=True)
+def delete_object(filesystem_id):
+    try:
+        name = app.current_request.query_params['name']
+        path = app.current_request.query_params['path']
+    except KeyError as e:
+        app.log.error('Missing required query param: {e}'.format(e=e))
+        raise BadRequestError('Missing required query param: {e}'.format(e=e))
+    else:
+        filemanager_event = {"operation": "delete", "path": path, "name": name}
         operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
         # TODO: Fix this to also parse payload for status code
 
