@@ -2,7 +2,6 @@ import Home from '@/routes/Home.vue'
 import Configure from '@/routes/Configure.vue'
 //import Upload from '@/routes/Upload.vue'
 import Filesystem from '@/routes/Filesystem.vue'
-import Download from '@/routes/Download.vue'
 //import Login from '@/routes/Login.vue'
 
 //  mode: 'history',
@@ -24,12 +23,6 @@ const routes = [
       path: '/filesystem/:id',
       name: 'filesystem',
       component: Filesystem,
-      meta: { requiresAuth: false }
-    },
-    {
-      path: '/download',
-      name: 'download',
-      component: Download,
       meta: { requiresAuth: false }
     }
     // {

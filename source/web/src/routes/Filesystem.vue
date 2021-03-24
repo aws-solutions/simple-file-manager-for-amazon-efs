@@ -8,12 +8,12 @@
     <b-col id=navigation>
         <b-card class="mr-3">
             <b-row>
-               <b-col align-self="start">
+               <b-col cols=7>
                     <h3>Navigation</h3>
                 </b-col>
                 <b-col>
                 </b-col>
-                <b-col align-self="end">
+                <b-col>
                     <b-button v-b-modal.dir-modal variant="outline-info" class="mb-2">
                         Create directory
                     <b-icon icon="folder-plus" aria-hidden="true"></b-icon>
@@ -34,20 +34,15 @@
     <b-col>
         <b-card class="mr-3">
             <b-row>
-                <b-col cols="5">
+                <b-col cols=10>
                     <h3>Files</h3>
                 </b-col>
-                <b-col>
-                    <b-form-checkbox v-model="editEnabled" name="editEnableButton" switch>
-                        Delete Mode
-                    </b-form-checkbox>
-                </b-col>
-                <b-col cols="4">
-                    <b-button v-b-modal.file-modal variant="outline-info" class="mb-2">
+                <b-col align-self="end">
+                    <b-button v-b-modal.upload-modal variant="outline-info" class="mb-2">
                         Upload file
                         <b-icon icon="box-arrow-up" aria-hidden="true"></b-icon>
                     </b-button>
-                    <b-modal id="file-modal">
+                    <b-modal id="upload-modal">
                         <upload @uploadCompleted=refresh v-bind:nav="navObjects"/>
                     </b-modal>
                 </b-col>
@@ -57,25 +52,31 @@
             >
             <template v-slot:cell(Name)="data">
                 <b-row>
-                    <b-col cols="9">
+                    <b-col cols="10">
                         {{data.value}}
                     </b-col>
-                    <div v-if="editEnabled">
                     <!-- <b-col cols="1">
                         <b-button variant="outline-warning">
                             <b-icon icon="pencil"></b-icon>
                         </b-button>
                     </b-col>
                     <br> -->
-                    <b-col cols="1">
-                        <b-button @click=deleteFile(data.value) variant="outline-danger">
-                            <b-icon icon="trash"></b-icon>
-                        </b-button>
+                    <b-col>
+                        <b-link @click=deleteFile(data.value)>
+                            <b-icon icon="trash" variant="danger"></b-icon>
+                        </b-link>
                     </b-col>
-                    </div>
+                    <b-col>
+                        <b-link @click=startDownload(data.value) v-b-modal.download-modal>
+                            <b-icon icon="arrow-down" variant="primary"></b-icon>
+                        </b-link>
+                    </b-col>
                 </b-row>
             </template>
             </b-table>
+            <b-modal id="download-modal">
+                <download :nav="navObjects" :filename="filename"/>
+            </b-modal>
         </b-card>
     </b-col>
   </b-row>
@@ -86,17 +87,20 @@
 <script>
 import { API } from 'aws-amplify';
 import upload from '../components/upload.vue'
+import download from '../components/download.vue'
 import makedir from '../components/makedir.vue'
 
 export default {
   name: 'Filesystem',
   components: {
       upload,
-      makedir
+      makedir,
+      download
   },
   data () {
     return {
         editEnabled: false,
+        filename: null,
         files: [],
         dirs: [],
         navObjects: [
@@ -141,6 +145,9 @@ export default {
             let tmp_item = {"Directory": directories[dir]}
             this.dirs.push(tmp_item)
         }
+      },
+      startDownload (filename) {
+          this.filename = filename
       },
       async deleteFile (name) {
           let requestParams = { 

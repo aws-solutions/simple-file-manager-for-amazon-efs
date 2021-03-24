@@ -1,9 +1,8 @@
 <template>
   <div>
   <b-container fluid='true' class="bv-example-row">
-  <!-- <div v-if="downloadDone"> -->
-    <!-- <a v-bind:href="href" v-bind:download="filename">Download</a> -->
-  <!-- </div> -->
+    <p> Downloading file: {{filename}}</p>
+    <b-progress :value="value" :max="max" class="mb-3"></b-progress>
 </b-container>
   </div>
 </template>
@@ -11,15 +10,24 @@
 <script>
 
 export default {
-  name: 'Download',
+  name: 'download',
+  props: ['nav', 'filename'],
+  computed: {
+    path: function () {
+      return this.nav[this.nav.length - 1].to.query.path
+    },
+    value: function () {
+      return (this.dzchunkindex / this.totalChunks) * 100
+    }
+  },
   data () {
     return {
         href: 'data:application/octet-stream;base64,',
         chunkBlobs: [],
-        filename: 'test_technical_cue.mp4',
-        path: '/mnt/efs/test/',
         dzchunkindex: null,
         dzchunkbyteoffset: null,
+        totalChunks: null,
+        max: 95,
         base_url: 'https://i076sdxd27.execute-api.us-west-2.amazonaws.com/api/download/fs-b44095b1',
         downloadDone: false
     }
@@ -46,6 +54,7 @@ export default {
 
               let chunkblob = await (await fetch(this.href + chunkData)).blob();
 
+              this.totalChunks = chunk.dztotalchunkcount
               this.chunkBlobs[chunkIndex] = chunkblob
               
               this.dzchunkindex = chunkIndex
