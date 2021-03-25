@@ -208,6 +208,8 @@ echo "--------------------------------------------------------------------------
 
 echo "Preparing template files:"
 cp "$build_dir/efs-file-manager.yaml" "$global_dist_dir/efs-file-manager.template"
+cp "$build_dir/efs-file-manager.yaml" "$global_dist_dir/efs-file-web-application.template"
+
 find "$global_dist_dir"
 echo "Updating template source bucket in template files with '$global_bucket'"
 echo "Updating code source bucket in template files with '$regional_bucket'"
@@ -266,6 +268,16 @@ rm -rf ./dist
 #echo "Compiling the vue app"
 #npm run build
 #echo "Built demo webapp"
+
+echo "Building CFN Helper Custom Resource VueJS"
+# Build the lambda zip here. 
+
+
+
+
+
+
+
 
 
 echo "------------------------------------------------------------------------------"
