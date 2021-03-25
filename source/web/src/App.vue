@@ -18,9 +18,15 @@ export default {
 </script>
 
 <style>
+
+
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.navbar.navbar-dark.bg-info.navbar-expand {
+  background-color: #232F3E!important;
 }
 </style>

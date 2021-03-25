@@ -14,7 +14,7 @@
                 <b-col>
                 </b-col>
                 <b-col>
-                    <b-button v-b-modal.dir-modal variant="outline-info" class="mb-2">
+                    <b-button v-b-modal.dir-modal variant="link" class="mb-2 dirBtn">
                         Create directory
                     <b-icon icon="folder-plus" aria-hidden="true"></b-icon>
                     </b-button>
@@ -38,7 +38,7 @@
                     <h3>Files</h3>
                 </b-col>
                 <b-col align-self="end">
-                    <b-button v-b-modal.upload-modal variant="outline-info" class="mb-2">
+                    <b-button v-b-modal.upload-modal variant="link" class="mb-2 uploadBtn">
                         Upload file
                         <b-icon icon="box-arrow-up" aria-hidden="true"></b-icon>
                     </b-button>
@@ -68,7 +68,7 @@
                     </b-col>
                     <b-col>
                         <b-link @click=startDownload(data.value) v-b-modal.download-modal>
-                            <b-icon icon="arrow-down" variant="primary"></b-icon>
+                            <b-icon class="downloadIcon" icon="arrow-down" variant="primary"></b-icon>
                         </b-link>
                     </b-col>
                 </b-row>
@@ -86,8 +86,8 @@
 
 <script>
 import { API } from 'aws-amplify';
-import upload from '../components/upload.vue'
 import download from '../components/download.vue'
+import upload from '../components/upload.vue'
 import makedir from '../components/makedir.vue'
 
 export default {
@@ -218,4 +218,15 @@ b-button {
     padding-top: 2%;
 }
 
+.downloadIcon {
+    color:#FF9900!important;
+}
+
+.uploadBtn {
+    color:#FF9900!important;
+}
+
+.dirBtn {
+    color:#FF9900!important;
+}
 </style>
