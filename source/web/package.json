@@ -17,7 +17,8 @@
     "vue": "^2.6.11",
     "vue-router": "^3.4.3",
     "vue-stepper-component": "^1.0.0",
-    "vue2-dropzone": "^3.6.0"
+    "vue2-dropzone": "^3.6.0",
+    "webpack": "^4.46.0"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "^4.5.0",
