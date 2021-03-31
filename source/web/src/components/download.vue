@@ -17,7 +17,7 @@ export default {
       return this.nav[this.nav.length - 1].to.query.path
     },
     value: function () {
-      return (this.dzchunkindex / this.totalChunks) * 100
+      return ((this.dzchunkindex + 1) / this.totalChunks) * 100
     }
   },
   data () {
