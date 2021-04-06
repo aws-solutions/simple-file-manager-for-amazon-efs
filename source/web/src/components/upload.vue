@@ -17,6 +17,9 @@
 <script>
 import vue2Dropzone from 'vue2-dropzone'
 import 'vue2-dropzone/dist/vue2Dropzone.min.css'
+import Auth from '@aws-amplify/auth';
+import { Signer } from '@aws-amplify/core';
+//import * as urlLib from 'url';
 
 export default {
   name: 'upload',
@@ -31,7 +34,7 @@ export default {
     dropzoneOptions: function () {
       let options = {
           paramName: 'file',
-          url: 'https://i076sdxd27.execute-api.us-west-2.amazonaws.com/api/upload/' + this.$route.params.id + '?path=' + this.path,
+          url: this.fileManagerApi + '/api/upload/' + this.$route.params.id + '?path=' + this.path,
           chunking: true,
           forceChunking: true,
           method: 'post',
@@ -41,8 +44,33 @@ export default {
           //parallelChunkUploads: true,
           //retryChunks: true,
           // "Accept": "Application/Octet-Stream", 
-          //"Content-Type": "Application/Octet-Stream", '
-          headers: {'Cache-Control': null, 'X-Requested-With': null}
+          self: this,
+          init: function() {
+            this.on('sending', async function(file, xhr, formData) {
+              xhr.abort()
+              let signedParams = await this.options.self.signRequest(this.options.url, formData)
+              console.log(signedParams)
+              let response = await fetch(signedParams.url, {
+                  method: 'POST',
+                  mode: 'cors',
+                  cache: 'no-cache',
+                  headers: signedParams.headers,
+                  referrer: 'client',
+                  body: signedParams.data
+              })
+              
+              console.log(response)
+              // console.log(signedParams)
+              // xhr.open("POST", this.options.url)
+
+              // xhr.setRequestHeader('Authorization', signedParams.headers.Authorization)
+              // xhr.setRequestHeader('X-Amz-Security-Token', signedParams.headers['X-Amz-Security-Token'])
+              // xhr.setRequestHeader('x-amz-date', signedParams.headers['x-amz-date'])
+              
+              // xhr.send(formData)
+
+            })
+          }
         }
         return options
       }
@@ -58,7 +86,52 @@ export default {
   methods: {
     afterComplete() {
       this.$emit('uploadCompleted')
-    }
+    },
+    async signRequest(url, data) {
+  // const { ...parsedUrl } = urlLib.parse(url, true, true);
+
+  // let formattedUrl = urlLib.format({
+  //   ...parsedUrl,
+  //   query: { ...parsedUrl.query }
+  // });
+
+  // console.log(formattedUrl)
+
+  return Auth.currentCredentials()
+    .then(credentials => {
+      let cred = Auth.essentialCredentials(credentials);
+
+      return Promise.resolve(cred);
+    })
+    .then(essentialCredentials => {
+      let params = {
+        headers: { },
+        data: data,
+        method: 'POST',
+        url: url
+      }
+
+      let cred = {
+        secret_key: essentialCredentials.secretAccessKey,
+        access_key: essentialCredentials.accessKeyId,
+        session_token: essentialCredentials.sessionToken
+      }
+
+      console.log(params)
+      console.log(cred)
+
+      let serviceInfo = {
+        region: this.awsRegion, service: 'execute-api'
+      }
+
+      console.log(serviceInfo)
+      
+      let signedReq = Signer.sign(params, cred, serviceInfo);
+
+      return Promise.resolve(signedReq);
+    });
+}
+
   }
 }
 

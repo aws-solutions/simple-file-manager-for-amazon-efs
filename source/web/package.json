@@ -9,7 +9,8 @@
   },
   "dependencies": {
     "@aws-amplify/api": "^3.1.23",
-    "aws-amplify": "^3.0.24",
+    "aws-amplify": "^3.3.26",
+    "aws-amplify-vue": "^2.1.5",
     "aws-sdk": "^2.858.0",
     "bootstrap": "^4.5.0",
     "bootstrap-vue": "^2.15.0",

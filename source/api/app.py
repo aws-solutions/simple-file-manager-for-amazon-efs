@@ -8,7 +8,7 @@ import logging
 import time
 from requests_toolbelt import MultipartDecoder
 import zipfile
-from chalice import Chalice, Response, ChaliceViewError, BadRequestError, UnauthorizedError, ForbiddenError, NotFoundError, ConflictError, TooManyRequestsError
+from chalice import Chalice, Response, ChaliceViewError, BadRequestError, UnauthorizedError, ForbiddenError, NotFoundError, ConflictError, TooManyRequestsError, IAMAuthorizer
 
 
 # Misc global variables
@@ -19,6 +19,11 @@ app.log.setLevel(logging.DEBUG)
 app.api.binary_types.append('multipart/form-data')
 efs_lambda = os.path.join(
     os.path.dirname(__file__), 'chalicelib', 'efs_lambda.py')
+
+# Cognito resources
+# From cloudformation stack
+authorizer = IAMAuthorizer()
+
 
 # AWS Clients
 
@@ -200,12 +205,6 @@ def create_function(filesystem_id, access_point_arn, vpc):
         return response
 
 
-# Routes
-@app.route('/')
-def index():
-    return {'hello': 'world'}
-
-
 def has_manager_lambda(filesystem_id):
     try:
         serverless.get_function(
@@ -221,7 +220,13 @@ def has_manager_lambda(filesystem_id):
         return True
 
 
-@app.route('/filesystems', methods=["GET"], cors=True)
+# Routes
+@app.route('/')
+def index():
+    return {'hello': 'world'}
+
+
+@app.route('/filesystems', methods=["GET"], cors=True, authorizer=authorizer)
 def list_filesystems():
     try:
         response = efs.describe_file_systems()
@@ -238,7 +243,7 @@ def list_filesystems():
         return formatted_filesystems
 
 
-@app.route('/filesystems/{filesystem_id}', methods=['GET'], cors=True)
+@app.route('/filesystems/{filesystem_id}', methods=['GET'], cors=True, authorizer=authorizer)
 def describe_filesystem(filesystem_id):
     try:
         response = efs.describe_file_systems(
@@ -251,7 +256,7 @@ def describe_filesystem(filesystem_id):
         return json.dumps(response, indent=4, sort_keys=True, default=str)
 
 
-@app.route('/filesystems/{filesystem_id}/netinfo', methods=['GET'], cors=True)
+@app.route('/filesystems/{filesystem_id}/netinfo', methods=['GET'], cors=True, authorizer=authorizer)
 def get_netinfo_for_filesystem(filesystem_id):
     netinfo = []
     try:
@@ -281,7 +286,7 @@ def get_netinfo_for_filesystem(filesystem_id):
     return netinfo
 
 
-@app.route('/filesystems/{filesystem_id}/lambda', methods=['POST'], cors=True)
+@app.route('/filesystems/{filesystem_id}/lambda', methods=['POST'], cors=True, authorizer=authorizer)
 def create_filesystem_lambda(filesystem_id):
     request = app.current_request
     json_body = request.json_body
@@ -318,7 +323,7 @@ def create_filesystem_lambda(filesystem_id):
         return response
 
 # TODO: Change this url path to /objects/$fsid/upload
-@app.route('/upload/{filesystem_id}', methods=["POST"], content_types=['multipart/form-data'], cors=True)
+@app.route('/upload/{filesystem_id}', methods=["POST"], content_types=['multipart/form-data'], cors=True, authorizer=authorizer)
 def upload(filesystem_id):
     if app.current_request.query_params['path']:
         path = app.current_request.query_params['path']
@@ -362,7 +367,7 @@ def upload(filesystem_id):
         raise ChaliceViewError('Error uploading file: {payload}'.format(payload=payload))
 
 
-@app.route('/download/{filesystem_id}', methods=["GET"], cors=True)
+@app.route('/download/{filesystem_id}', methods=["GET"], cors=True, authorizer=authorizer)
 def download(filesystem_id):
     print(app.current_request.query_params)
     try:
@@ -391,7 +396,7 @@ def download(filesystem_id):
             raise BadRequestError('Unsupported or missing query params')
 
 
-@app.route('/objects/{filesystem_id}/dir', methods=['POST'], content_types=['application/x-www-form-urlencoded'], cors=True)
+@app.route('/objects/{filesystem_id}/dir', methods=['POST'], content_types=['application/x-www-form-urlencoded'], cors=True, authorizer=authorizer)
 def make_dir(filesystem_id):
     try:
         name = app.current_request.query_params['name']
@@ -415,7 +420,7 @@ def make_dir(filesystem_id):
             raise ChaliceViewError('Error creating dir: {payload}'.format(payload=payload))
 
 
-@app.route('/objects/{filesystem_id}', methods=['DELETE'], cors=True)
+@app.route('/objects/{filesystem_id}', methods=['DELETE'], cors=True, authorizer=authorizer)
 def delete_object(filesystem_id):
     try:
         name = app.current_request.query_params['name']
@@ -439,7 +444,7 @@ def delete_object(filesystem_id):
             raise ChaliceViewError('Error creating dir: {payload}'.format(payload=payload))
 
 
-@app.route('/objects/{filesystem_id}', methods=['GET'], cors=True)
+@app.route('/objects/{filesystem_id}', methods=['GET'], cors=True, authorizer=authorizer)
 def list_objects(filesystem_id):
     if app.current_request.query_params['path']:
         path = app.current_request.query_params['path']

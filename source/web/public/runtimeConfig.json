@@ -1,4 +1,7 @@
 {
     "awsRegion": "us-west-2",
-    "fileManagerApiUrl": "https://i076sdxd27.execute-api.us-west-2.amazonaws.com"
+    "fileManagerApiUrl": "https://lb1yzizxne.execute-api.us-west-2.amazonaws.com",
+    "userPoolId": "us-west-2_IdCDn0vvC",
+    "userPoolIdClientId": "2htscqbh39tdhikq0ie7basmi6",
+    "identityPoolId": "us-west-2:f0b7880b-7297-4e0b-a351-8d8127763c7f"
 }
