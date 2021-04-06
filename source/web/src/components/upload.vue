@@ -63,10 +63,9 @@ export default {
     async upload(chunkIndex, chunkOffset) {
       // first if block is for the first call to upload, e.g. when the button is clicked
       if (chunkIndex == 0 && chunkOffset == 0) {
-        console.log("Starting File Upload")
         let fileSize = this.fileToUpload.size
         this.totalChunks = Math.ceil(fileSize / this.chunkSize)
-        let chunk = this.fileToUpload.slice(0, this.chunkSize)
+        let chunk = this.fileToUpload.slice(0, this.chunkSize + 1)
         let chunkData = new FormData()
         
         chunkData.append('dzchunkindex', 0)
@@ -77,7 +76,6 @@ export default {
         chunkData.append('file', chunk, this.fileToUpload.name)
         
         let chunkStatus = await this.uploadChunk(chunkData)
-        console.log(chunkStatus)
         if (chunkStatus.statusCode != 200) {
           // could add retry functionality here
           alert("Upload failed")
@@ -92,34 +90,8 @@ export default {
       else {
         // check to see if the current chunk is equal to total chunks, if so we send the last bytes and return complete
         if (chunkIndex == this.totalChunks - 1) {
-          // let fileSize = this.fileToUpload.size
-          // let chunk = this.fileToUpload.slice(chunkOffset, this.chunkSize)
-          // let chunkData = new FormData()
-          
-          // chunkData.append('dzchunkindex', chunkIndex)
-          // chunkData.append('dztotalfilesize', fileSize)
-          // chunkData.append('dzchunksize', this.chunkSize)
-          // chunkData.append('dztotalchunkcount', this.totalChunks)
-          // chunkData.append('dzchunkbyteoffset', chunkOffset)
-          // chunkData.append('file', chunk, this.fileToUpload.name)
-          
-          // let chunkStatus = await this.uploadChunk(chunkData)
-          
-          // console.log(chunkStatus)
-          
-          // if (chunkStatus.statusCode != 200) {
-          //   // could add retry functionality here
-          //   alert("Upload failed")
-          // }
-          // else {
-            console.log("Upload Complete")
-            this.afterComplete()
-          // }
-        }
-        // in this case there are chunks remaining, so we continue to upload chunks
-        else {
           let fileSize = this.fileToUpload.size
-          let chunk = this.fileToUpload.slice(chunkOffset, this.chunkSize)
+          let chunk = this.fileToUpload.slice(chunkOffset)
           let chunkData = new FormData()
           
           chunkData.append('dzchunkindex', chunkIndex)
@@ -128,9 +100,33 @@ export default {
           chunkData.append('dztotalchunkcount', this.totalChunks)
           chunkData.append('dzchunkbyteoffset', chunkOffset)
           chunkData.append('file', chunk, this.fileToUpload.name)
-          console.log("Starting next chunk upload")
+          
           let chunkStatus = await this.uploadChunk(chunkData)
-          console.log(chunkStatus)
+          
+          
+          if (chunkStatus.statusCode != 200) {
+            // could add retry functionality here
+            alert("Upload failed")
+          }
+          else {
+            console.log("Upload Complete")
+            this.afterComplete()
+          }
+        }
+        // in this case there are chunks remaining, so we continue to upload chunks
+        else {
+          let fileSize = this.fileToUpload.size
+          let end = Math.min(chunkOffset + this.chunkSize, fileSize)
+          let chunk = this.fileToUpload.slice(chunkOffset, end)
+          let chunkData = new FormData()
+          
+          chunkData.append('dzchunkindex', chunkIndex)
+          chunkData.append('dztotalfilesize', fileSize)
+          chunkData.append('dzchunksize', this.chunkSize)
+          chunkData.append('dztotalchunkcount', this.totalChunks)
+          chunkData.append('dzchunkbyteoffset', chunkOffset)
+          chunkData.append('file', chunk, this.fileToUpload.name)
+          let chunkStatus = await this.uploadChunk(chunkData)
           
           if (chunkStatus.statusCode != 200) {
             // could add retry functionality here
@@ -138,7 +134,7 @@ export default {
           }
           else {
             let nextChunkIndex = chunkIndex + 1
-            let nextChunkOffset = chunkOffset + this.chunkSize
+            let nextChunkOffset = end
             this.upload(nextChunkIndex, nextChunkOffset)
           }
         }
