@@ -6,7 +6,13 @@
         <h2>Upload</h2>
           <p> Path: {{ path }}</p>
           <div v-if=urlLoaded>
-            <vue-dropzone ref="myVueDropzone" id="dropzone" :options="dropzoneOptions" @vdropzone-complete="afterComplete"></vue-dropzone>
+            <b-form-file
+              v-model="fileToUpload"
+              :state="Boolean(fileToUpload)"
+              placeholder="Choose a file or drop it here..."
+              drop-placeholder="Drop file here..."
+            ></b-form-file>
+            <b-button @click="upload(0,0)">Upload</b-button>
           </div>
     </b-col>
   </b-row>
@@ -15,49 +21,128 @@
 </template>
 
 <script>
-import vue2Dropzone from 'vue2-dropzone'
-import 'vue2-dropzone/dist/vue2Dropzone.min.css'
+import { API } from 'aws-amplify';
 
 export default {
   name: 'upload',
-  components: {
-    vueDropzone: vue2Dropzone
-  },
   props: ['nav'],
   computed: {
     path: function () {
       return this.nav[this.nav.length - 1].to.query.path
-    },
-    dropzoneOptions: function () {
-      let options = {
-          paramName: 'file',
-          url: 'https://i076sdxd27.execute-api.us-west-2.amazonaws.com/api/upload/' + this.$route.params.id + '?path=' + this.path,
-          chunking: true,
-          forceChunking: true,
-          method: 'post',
-          //timeout: 0,
-          maxFilesize: 2048, // megabytes
-          chunkSize: 1000000, // bytes
-          //parallelChunkUploads: true,
-          //retryChunks: true,
-          // "Accept": "Application/Octet-Stream", 
-          //"Content-Type": "Application/Octet-Stream", '
-          headers: {'Cache-Control': null, 'X-Requested-With': null}
-        }
-        return options
-      }
+    }
   },
   mounted: function () {
     this.urlLoaded = true
   },
   data () {
     return {
-      urlLoaded: false
+      urlLoaded: false,
+      fileToUpload: null,
+      totalChunks: null,
+      chunkSize: 1000000 // bytes
     }
   },
   methods: {
     afterComplete() {
       this.$emit('uploadCompleted')
+    },
+    async uploadChunk(formData) {
+      let requestParams = { 
+          queryStringParameters: {  
+            path: this.path
+          },
+          headers: {
+            "Content-Type": "multipart/form-data"
+          },
+          body: formData
+      };
+      let response = await API.post('fileManagerApi', '/api/upload/' + this.$route.params.id, requestParams)
+      return response
+    },
+    // this whole function needs to be cleaned up, notably reduce duplicate code by breaking out into functions - works well for now though
+    async upload(chunkIndex, chunkOffset) {
+      // first if block is for the first call to upload, e.g. when the button is clicked
+      if (chunkIndex == 0 && chunkOffset == 0) {
+        console.log("Starting File Upload")
+        let fileSize = this.fileToUpload.size
+        this.totalChunks = Math.ceil(fileSize / this.chunkSize)
+        let chunk = this.fileToUpload.slice(0, this.chunkSize)
+        let chunkData = new FormData()
+        
+        chunkData.append('dzchunkindex', 0)
+        chunkData.append('dztotalfilesize', fileSize)
+        chunkData.append('dzchunksize', this.chunkSize)
+        chunkData.append('dztotalchunkcount', this.totalChunks)
+        chunkData.append('dzchunkbyteoffset', 0)
+        chunkData.append('file', chunk, this.fileToUpload.name)
+        
+        let chunkStatus = await this.uploadChunk(chunkData)
+        console.log(chunkStatus)
+        if (chunkStatus.statusCode != 200) {
+          // could add retry functionality here
+          alert("Upload failed")
+        }
+        else {
+          let nextChunkIndex = 1
+          let nextChunkOffset = this.chunkSize + 1
+          this.upload(nextChunkIndex, nextChunkOffset)
+        }
+      }
+      // this case is hit recursively from the first call
+      else {
+        // check to see if the current chunk is equal to total chunks, if so we send the last bytes and return complete
+        if (chunkIndex == this.totalChunks - 1) {
+          // let fileSize = this.fileToUpload.size
+          // let chunk = this.fileToUpload.slice(chunkOffset, this.chunkSize)
+          // let chunkData = new FormData()
+          
+          // chunkData.append('dzchunkindex', chunkIndex)
+          // chunkData.append('dztotalfilesize', fileSize)
+          // chunkData.append('dzchunksize', this.chunkSize)
+          // chunkData.append('dztotalchunkcount', this.totalChunks)
+          // chunkData.append('dzchunkbyteoffset', chunkOffset)
+          // chunkData.append('file', chunk, this.fileToUpload.name)
+          
+          // let chunkStatus = await this.uploadChunk(chunkData)
+          
+          // console.log(chunkStatus)
+          
+          // if (chunkStatus.statusCode != 200) {
+          //   // could add retry functionality here
+          //   alert("Upload failed")
+          // }
+          // else {
+            console.log("Upload Complete")
+            this.afterComplete()
+          // }
+        }
+        // in this case there are chunks remaining, so we continue to upload chunks
+        else {
+          let fileSize = this.fileToUpload.size
+          let chunk = this.fileToUpload.slice(chunkOffset, this.chunkSize)
+          let chunkData = new FormData()
+          
+          chunkData.append('dzchunkindex', chunkIndex)
+          chunkData.append('dztotalfilesize', fileSize)
+          chunkData.append('dzchunksize', this.chunkSize)
+          chunkData.append('dztotalchunkcount', this.totalChunks)
+          chunkData.append('dzchunkbyteoffset', chunkOffset)
+          chunkData.append('file', chunk, this.fileToUpload.name)
+          console.log("Starting next chunk upload")
+          let chunkStatus = await this.uploadChunk(chunkData)
+          console.log(chunkStatus)
+          
+          if (chunkStatus.statusCode != 200) {
+            // could add retry functionality here
+            alert("Upload failed")
+          }
+          else {
+            let nextChunkIndex = chunkIndex + 1
+            let nextChunkOffset = chunkOffset + this.chunkSize
+            this.upload(nextChunkIndex, nextChunkOffset)
+          }
+        }
+      }
     }
   }
 }
