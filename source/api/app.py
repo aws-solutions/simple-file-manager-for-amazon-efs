@@ -136,41 +136,60 @@ def create_function_zip():
 
 
 def create_function_role(filesystem_name):
-    # TODO: This will need to be updated to allow actual operations
-    basic_role = """
-        Version: '2012-10-17'
-        Statement:
-            - Effect: Allow
-              Principal: 
-                Service: lambda.amazonaws.com
-              Action: sts:AssumeRole
-        """
-    # TODO: Add try / except / else blocks and handle errors
-    # lambda.awazonaws.com can assume this role.
-    role_response = iam.create_role(RoleName='{filesystem}-manager-role'.format(filesystem=filesystem_name),
-                    AssumeRolePolicyDocument=json.dumps(yaml.load(basic_role)))
+    trust_policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "",
+                "Effect": "Allow",
+                "Principal": {
+                    "Service": "lambda.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+            }
+        ]
+    }
 
-    # TODO: Change these to a least privilege role defined in the cloudformation
-    # This role has the AWSLambdaBasicExecutionRole managed policy.
-    iam.attach_role_policy(RoleName='{filesystem}-manager-role'.format(filesystem=filesystem_name),
+    role_name = f'{filesystem_name}-manager-role'
+    path = '/'
+    description = f'IAM Role for filesystem {filesystem_name} manager lambda'
+
+    try:
+        role_response = iam.create_role(
+            Path=path,
+            RoleName=role_name,
+            AssumeRolePolicyDocument=json.dumps(trust_policy),
+            Description=description,
+            MaxSessionDuration=3600
+        )
+    except Exception as e:
+        app.log.debug(e)
+        return ChaliceViewError(e)
+    
+
+    iam.attach_role_policy(RoleName=role_name,
                            PolicyArn='arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole')
-    iam.attach_role_policy(RoleName='{filesystem}-manager-role'.format(filesystem=filesystem_name),
-                           PolicyArn='arn:aws:iam::aws:policy/AdministratorAccess')
-    app.log.debug(role_response)
-    role_arn = role_response['Role']['Arn']
+    iam.attach_role_policy(RoleName=role_name,
+                           PolicyArn='arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole')
+    iam.attach_role_policy(RoleName=role_name,
+                           PolicyArn='arn:aws:iam::aws:policy/AmazonElasticFileSystemClientReadWriteAccess')
+    
+    
+    role_arn = str(role_response['Role']['Arn'])
+    
     return role_arn
 
 
 def create_function(filesystem_id, access_point_arn, vpc):
     code = create_function_zip()
-    # TODO: Figure out whats up here
-    #role = create_function_role(filesystem_id)
+    role = create_function_role(filesystem_id)
+    # TODO: Add retry logic instead of relying on sleep
+    time.sleep(10)
     try:
         response = serverless.create_function(
             FunctionName='{filesystem}-manager-lambda'.format(filesystem=filesystem_id),
             Runtime='python3.8',
-            Role='arn:aws:iam::764127651952:role/RootAccessLambdaRole', #TODO: remove
-            #Role=role,
+            Role=role,
             Handler='var/task/chalicelib/efs_lambda.lambda_handler',
             Code={
                 'ZipFile': code
@@ -311,7 +330,7 @@ def create_filesystem_lambda(filesystem_id):
         app.log.error(error)
         raise ChaliceViewError('Check API Logs')
 
-    # TODO: 100% should not do this, keeping until I look into a better method to ensure access point is available
+    # TODO: Add retry logic instead of relying on sleep
     time.sleep(10)
 
     try:

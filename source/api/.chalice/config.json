@@ -4,7 +4,7 @@
   "stages": {
     "dev": {
       "manage_iam_role": false,
-      "iam_role_arn": "arn:aws:iam::764127651952:role/RootAccessLambdaRole",
+      "iam_role_arn": "",
       "api_gateway_stage": "api"
     }
   }

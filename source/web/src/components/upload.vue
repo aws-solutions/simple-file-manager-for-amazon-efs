@@ -12,6 +12,11 @@
               placeholder="Choose a file or drop it here..."
               drop-placeholder="Drop file here..."
             ></b-form-file>
+            <div v-if="uploading">
+              <b-progress :value="value" :max="max" class="mb-3"></b-progress>
+            </div>
+          </div>
+          <div v-if="!uploading">
             <b-button @click="upload(0,0)">Upload</b-button>
           </div>
     </b-col>
@@ -29,6 +34,9 @@ export default {
   computed: {
     path: function () {
       return this.nav[this.nav.length - 1].to.query.path
+    },
+    value: function () {
+      return ((this.currentChunk + 1) / this.totalChunks) * 100
     }
   },
   mounted: function () {
@@ -38,7 +46,10 @@ export default {
     return {
       urlLoaded: false,
       fileToUpload: null,
-      totalChunks: null,
+      totalChunks: 0,
+      currentChunk: 0,
+      max: 95,
+      uploading: false,
       chunkSize: 1000000 // bytes
     }
   },
@@ -69,13 +80,16 @@ export default {
     },
     // this whole function needs to be cleaned up, notably reduce duplicate code by breaking out into functions - works well for now though
     async upload(chunkIndex, chunkOffset) {
+      this.currentChunk = chunkIndex
       // first if block is for the first call to upload, e.g. when the button is clicked
       if (chunkIndex == 0 && chunkOffset == 0) {
         let fileSize = this.fileToUpload.size
         this.totalChunks = Math.ceil(fileSize / this.chunkSize)
         let chunk = this.fileToUpload.slice(0, this.chunkSize + 1)
         let chunkData = {}
-        
+
+        this.uploading = true
+
         chunkData.dzchunkindex = 0
         chunkData.dztotalfilesize = fileSize
         chunkData.dzchunksize = this.chunkSize
@@ -117,6 +131,7 @@ export default {
             alert("Upload failed")
           }
           else {
+            this.uploading = false
             console.log("Upload Complete")
             this.afterComplete()
           }
@@ -156,9 +171,11 @@ export default {
 </script>
 
 
-
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
 
+button {
+  margin-top: 5%;
+}
 
 </style>
