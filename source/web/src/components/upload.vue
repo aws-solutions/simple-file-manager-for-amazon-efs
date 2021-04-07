@@ -6,7 +6,13 @@
         <h2>Upload</h2>
           <p> Path: {{ path }}</p>
           <div v-if=urlLoaded>
-            <vue-dropzone ref="myVueDropzone" id="dropzone" :options="dropzoneOptions" @vdropzone-complete="afterComplete"></vue-dropzone>
+            <b-form-file
+              v-model="fileToUpload"
+              :state="Boolean(fileToUpload)"
+              placeholder="Choose a file or drop it here..."
+              drop-placeholder="Drop file here..."
+            ></b-form-file>
+            <b-button @click="upload(0,0)">Upload</b-button>
           </div>
     </b-col>
   </b-row>
@@ -15,123 +21,134 @@
 </template>
 
 <script>
-import vue2Dropzone from 'vue2-dropzone'
-import 'vue2-dropzone/dist/vue2Dropzone.min.css'
-import Auth from '@aws-amplify/auth';
-import { Signer } from '@aws-amplify/core';
-//import * as urlLib from 'url';
+import { API } from 'aws-amplify';
 
 export default {
   name: 'upload',
-  components: {
-    vueDropzone: vue2Dropzone
-  },
   props: ['nav'],
   computed: {
     path: function () {
       return this.nav[this.nav.length - 1].to.query.path
-    },
-    dropzoneOptions: function () {
-      let options = {
-          paramName: 'file',
-          url: this.fileManagerApi + '/api/upload/' + this.$route.params.id + '?path=' + this.path,
-          chunking: true,
-          forceChunking: true,
-          method: 'post',
-          //timeout: 0,
-          maxFilesize: 2048, // megabytes
-          chunkSize: 1000000, // bytes
-          //parallelChunkUploads: true,
-          //retryChunks: true,
-          // "Accept": "Application/Octet-Stream", 
-          self: this,
-          init: function() {
-            this.on('sending', async function(file, xhr, formData) {
-              xhr.abort()
-              let signedParams = await this.options.self.signRequest(this.options.url, formData)
-              console.log(signedParams)
-              let response = await fetch(signedParams.url, {
-                  method: 'POST',
-                  mode: 'cors',
-                  cache: 'no-cache',
-                  headers: signedParams.headers,
-                  referrer: 'client',
-                  body: signedParams.data
-              })
-              
-              console.log(response)
-              // console.log(signedParams)
-              // xhr.open("POST", this.options.url)
-
-              // xhr.setRequestHeader('Authorization', signedParams.headers.Authorization)
-              // xhr.setRequestHeader('X-Amz-Security-Token', signedParams.headers['X-Amz-Security-Token'])
-              // xhr.setRequestHeader('x-amz-date', signedParams.headers['x-amz-date'])
-              
-              // xhr.send(formData)
-
-            })
-          }
-        }
-        return options
-      }
+    }
   },
   mounted: function () {
     this.urlLoaded = true
   },
   data () {
     return {
-      urlLoaded: false
+      urlLoaded: false,
+      fileToUpload: null,
+      totalChunks: null,
+      chunkSize: 1000000 // bytes
     }
   },
   methods: {
     afterComplete() {
       this.$emit('uploadCompleted')
     },
-    async signRequest(url, data) {
-  // const { ...parsedUrl } = urlLib.parse(url, true, true);
-
-  // let formattedUrl = urlLib.format({
-  //   ...parsedUrl,
-  //   query: { ...parsedUrl.query }
-  // });
-
-  // console.log(formattedUrl)
-
-  return Auth.currentCredentials()
-    .then(credentials => {
-      let cred = Auth.essentialCredentials(credentials);
-
-      return Promise.resolve(cred);
-    })
-    .then(essentialCredentials => {
-      let params = {
-        headers: { },
-        data: data,
-        method: 'POST',
-        url: url
+    blobToBase64(blob) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result.split(',').pop());
+        reader.readAsDataURL(blob);
+      });
+    },
+    async uploadChunk(chunkData) {  
+      let requestParams = { 
+          queryStringParameters: {  
+            path: this.path,
+            filename: this.fileToUpload.name
+          },
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: chunkData
+      };
+      let response = await API.post('fileManagerApi', '/api/upload/' + this.$route.params.id, requestParams)
+      return response
+    },
+    // this whole function needs to be cleaned up, notably reduce duplicate code by breaking out into functions - works well for now though
+    async upload(chunkIndex, chunkOffset) {
+      // first if block is for the first call to upload, e.g. when the button is clicked
+      if (chunkIndex == 0 && chunkOffset == 0) {
+        let fileSize = this.fileToUpload.size
+        this.totalChunks = Math.ceil(fileSize / this.chunkSize)
+        let chunk = this.fileToUpload.slice(0, this.chunkSize + 1)
+        let chunkData = {}
+        
+        chunkData.dzchunkindex = 0
+        chunkData.dztotalfilesize = fileSize
+        chunkData.dzchunksize = this.chunkSize
+        chunkData.dztotalchunkcount = this.totalChunks
+        chunkData.dzchunkbyteoffset = 0
+        chunkData.content = await this.blobToBase64(chunk)
+        
+        let chunkStatus = await this.uploadChunk(chunkData)
+        if (chunkStatus.statusCode != 200) {
+          // could add retry functionality here
+          alert("Upload failed")
+        }
+        else {
+          let nextChunkIndex = 1
+          let nextChunkOffset = this.chunkSize + 1
+          this.upload(nextChunkIndex, nextChunkOffset)
+        }
       }
-
-      let cred = {
-        secret_key: essentialCredentials.secretAccessKey,
-        access_key: essentialCredentials.accessKeyId,
-        session_token: essentialCredentials.sessionToken
+      // this case is hit recursively from the first call
+      else {
+        // check to see if the current chunk is equal to total chunks, if so we send the last bytes and return complete
+        if (chunkIndex == this.totalChunks - 1) {
+          let fileSize = this.fileToUpload.size
+          let chunk = this.fileToUpload.slice(chunkOffset)
+          let chunkData = {}
+        
+          chunkData.dzchunkindex = chunkIndex
+          chunkData.dztotalfilesize = fileSize
+          chunkData.dzchunksize = this.chunkSize
+          chunkData.dztotalchunkcount = this.totalChunks
+          chunkData.dzchunkbyteoffset = chunkOffset
+          chunkData.content = await this.blobToBase64(chunk)
+          
+          let chunkStatus = await this.uploadChunk(chunkData)
+          
+          
+          if (chunkStatus.statusCode != 200) {
+            // could add retry functionality here
+            alert("Upload failed")
+          }
+          else {
+            console.log("Upload Complete")
+            this.afterComplete()
+          }
+        }
+        // in this case there are chunks remaining, so we continue to upload chunks
+        else {
+          let fileSize = this.fileToUpload.size
+          let end = Math.min(chunkOffset + this.chunkSize, fileSize)
+          let chunk = this.fileToUpload.slice(chunkOffset, end)
+          let chunkData = {}
+        
+          chunkData.dzchunkindex = chunkIndex
+          chunkData.dztotalfilesize = fileSize
+          chunkData.dzchunksize = this.chunkSize
+          chunkData.dztotalchunkcount = this.totalChunks
+          chunkData.dzchunkbyteoffset = chunkOffset
+          chunkData.content = await this.blobToBase64(chunk)
+          
+          let chunkStatus = await this.uploadChunk(chunkData)
+          
+          if (chunkStatus.statusCode != 200) {
+            // could add retry functionality here
+            alert("Upload failed")
+          }
+          else {
+            let nextChunkIndex = chunkIndex + 1
+            let nextChunkOffset = end
+            this.upload(nextChunkIndex, nextChunkOffset)
+          }
+        }
       }
-
-      console.log(params)
-      console.log(cred)
-
-      let serviceInfo = {
-        region: this.awsRegion, service: 'execute-api'
-      }
-
-      console.log(serviceInfo)
-      
-      let signedReq = Signer.sign(params, cred, serviceInfo);
-
-      return Promise.resolve(signedReq);
-    });
-}
-
+    }
   }
 }
 

@@ -16,7 +16,6 @@ from chalice import Chalice, Response, ChaliceViewError, BadRequestError, Unauth
 
 app = Chalice(app_name='api')
 app.log.setLevel(logging.DEBUG)
-app.api.binary_types.append('multipart/form-data')
 efs_lambda = os.path.join(
     os.path.dirname(__file__), 'chalicelib', 'efs_lambda.py')
 
@@ -33,20 +32,21 @@ iam = boto3.client('iam')
 
 
 # Helper functions
-def parse_multipart_object(headers, content):
-    for header in headers.split(';'):
-        # Only get the specific dropzone form values we need
-        if header == 'form-data':
-            continue
-        elif 'filename' in header:
-            filename_object = {"filename": header.split('"')[1::2][0], "content": content}
-            return filename_object
-        elif 'name="file"' in header:
-            continue
-        else:
-            header_name = header.split('"')[1::2][0]
-            metadata_object = {header_name: content}
-            return metadata_object
+
+# def parse_multipart_object(headers, content):
+#     for header in headers.split(';'):
+#         # Only get the specific dropzone form values we need
+#         if header == 'form-data':
+#             continue
+#         elif 'filename' in header:
+#             filename_object = {"filename": header.split('"')[1::2][0], "content": content}
+#             return filename_object
+#         elif 'name="file"' in header:
+#             continue
+#         else:
+#             header_name = header.split('"')[1::2][0]
+#             metadata_object = {header_name: content}
+#             return metadata_object
 
 
 def proxy_operation_to_efs_lambda(filesystem_id, event):
@@ -323,34 +323,21 @@ def create_filesystem_lambda(filesystem_id):
         return response
 
 # TODO: Change this url path to /objects/$fsid/upload
-@app.route('/upload/{filesystem_id}', methods=["POST"], content_types=['multipart/form-data'], cors=True, authorizer=authorizer)
+@app.route('/upload/{filesystem_id}', methods=["POST"], cors=True, authorizer=authorizer)
 def upload(filesystem_id):
-    if app.current_request.query_params['path']:
+    print(app.current_request.query_params)
+    try:
         path = app.current_request.query_params['path']
-    else:
-        app.log.error('Missing required query param: path')
-        raise BadRequestError('Missing required query param: path')
+        filename = app.current_request.query_params['filename']
+    except KeyError as e:
+        app.log.error('Missing required query param: {e}'.format(e=e))
+        raise BadRequestError('Missing required query param: {e}'.format(e=e))
 
-    #app.log.debug((app.current_request.raw_body)
-    #app.log.debug((app.current_request.headers['content-type'])
+    request = app.current_request
+    chunk_data = request.json_body
+    chunk_data["filename"] = filename
 
-    parsed_form_object = {}
-    for part in MultipartDecoder(app.current_request.raw_body, app.current_request.headers['content-type']).parts:
-        raw_name = str(part.headers[b'Content-Disposition'], 'utf-8')
-        if "filename" in raw_name:
-            b64_content = str(base64.b64encode(part.content), 'utf-8')
-            parsed_object = parse_multipart_object(raw_name, b64_content)
-        else:
-            parsed_object = parse_multipart_object(raw_name, part.content.decode())
-
-        if parsed_object is None:
-            pass
-        else:
-            parsed_form_object.update(parsed_object)
-
-    app.log.debug(parsed_form_object)
-
-    filemanager_event = {"operation": "upload", "path": path, "form_data": parsed_form_object}
+    filemanager_event = {"operation": "upload", "path": path, "chunk_data": chunk_data}
 
     operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
 
@@ -381,7 +368,7 @@ def download(filesystem_id):
             chunk_index = app.current_request.query_params['dzchunkindex']
             chunk_offset = app.current_request.query_params['dzchunkbyteoffset']
             filemanager_event = {"operation": "download", "path": path, "filename": filename,
-                                 "form_data": {"dzchunkindex": int(chunk_index), "dzchunkbyteoffset": int(chunk_offset)}}
+                                 "chunk_data": {"dzchunkindex": int(chunk_index), "dzchunkbyteoffset": int(chunk_offset)}}
             operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
             payload_encoded = operation_result['Payload']
             payload = json.loads(payload_encoded.read().decode("utf-8"))

@@ -5,13 +5,16 @@
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
-    "lint": "vue-cli-service lint"
+    "lint": "vue-cli-service lint",
+    "postinstall": "npx patch-package"
   },
   "dependencies": {
-    "@aws-amplify/api": "^3.1.23",
+    "@aws-amplify/api": "^3.2.29",
+    "@aws-amplify/core": "^3.8.21",
     "aws-amplify": "^3.3.26",
     "aws-amplify-vue": "^2.1.5",
     "aws-sdk": "^2.858.0",
+    "aws4fetch": "^1.0.13",
     "bootstrap": "^4.5.0",
     "bootstrap-vue": "^2.15.0",
     "core-js": "^3.6.5",
