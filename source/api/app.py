@@ -89,6 +89,7 @@ def create_filesystem_access_point(filesystem_id):
 
 
 def delete_access_point(access_point_arn):
+    # TODO: Look into why this function is not working, causing a minor bug
     try:
         efs.delete_access_point(
             AccessPointId=access_point_arn)
@@ -150,10 +151,12 @@ def create_function_role(filesystem_name):
         ]
     }
 
+    # TODO: Prepend this role name with the stack name
     role_name = f'{filesystem_name}-manager-role'
     path = '/'
     description = f'IAM Role for filesystem {filesystem_name} manager lambda'
 
+    # TODO: Add IAM resource tags
     try:
         role_response = iam.create_role(
             Path=path,
@@ -181,6 +184,7 @@ def create_function_role(filesystem_name):
 
 
 def create_function(filesystem_id, access_point_arn, vpc):
+    # TODO: Add lambda resource policy to prevent this function from being invoked by anything other than this API handler
     code = create_function_zip()
     role = create_function_role(filesystem_id)
     # TODO: Add retry logic instead of relying on sleep
@@ -402,14 +406,17 @@ def download(filesystem_id):
             raise BadRequestError('Unsupported or missing query params')
 
 
-@app.route('/objects/{filesystem_id}/dir', methods=['POST'], content_types=['application/x-www-form-urlencoded'], cors=True, authorizer=authorizer)
+@app.route('/objects/{filesystem_id}/dir', methods=['POST'], cors=True, authorizer=authorizer)
 def make_dir(filesystem_id):
+    request = app.current_request
+    dir_data = request.json_body
+
     try:
-        name = app.current_request.query_params['name']
-        path = app.current_request.query_params['path']
+        name = dir_data['name']
+        path = dir_data['path']
     except KeyError as e:
-        app.log.error('Missing required query param: {e}'.format(e=e))
-        raise BadRequestError('Missing required query param: {e}'.format(e=e))
+        app.log.error('Missing required param: {e}'.format(e=e))
+        raise BadRequestError('Missing required param: {e}'.format(e=e))
     else:
         filemanager_event = {"operation": "make_dir", "path": path, "name": name}
         operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)

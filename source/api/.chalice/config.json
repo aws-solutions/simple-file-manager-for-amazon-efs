@@ -4,7 +4,7 @@
   "stages": {
     "dev": {
       "manage_iam_role": false,
-      "iam_role_arn": "",
+      "iam_role_arn": "arn:aws:iam::999999999999:role/DummyRoleToBeReplaced",
       "api_gateway_stage": "api"
     }
   }
