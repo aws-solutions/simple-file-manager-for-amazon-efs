@@ -1,0 +1,246 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Simple File Manager for Amazon EFS - Deploys the Simple File Manager Cognito Infrastructure
+
+Parameters:
+  AdminEmail:
+    Description: Email address of the Simple File Manager Administrator
+    Type: String
+  ApiId:
+    Description: REST API ID of the Simple File Manager API
+    Type: String
+
+Resources:
+  SimpleFileManagerUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: True
+        InviteMessageTemplate:
+          EmailMessage: !Join ["", [
+            "Your username is {username} and temporary password is {####}<br>Stack Name: ",
+            Ref: "AWS::StackName",
+            "<br>Stack Overview:<br>",
+            "https://",
+            Ref: "AWS::Region",
+            ".console.aws.amazon.com/cloudformation/home?region=",
+            Ref: "AWS::Region",
+            "#/stacks/stackinfo?stackId=",
+            Ref: "AWS::StackId"
+          ]]
+          EmailSubject: "Welcome to AWS Simple File Manager for Amazon EFS"
+      EmailConfiguration:
+        EmailSendingAccount: 'COGNITO_DEFAULT'
+      AutoVerifiedAttributes: ['email']
+
+  SimpleFileManagerWebAppClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref SimpleFileManagerUserPool
+
+    # Service - cognito / security infrastructure
+
+    # Super hacky lambda for formatting cognito role mapping since cognito is severely lacking in CF support
+    # https://forums.aws.amazon.com/message.jspa?messageID=790437#790437
+    # https://stackoverflow.com/questions/53131052/aws-cloudformation-can-not-create-stack-when-awscognitoidentitypoolroleattac
+
+  CognitoRoleMappingTransformer:
+      Type: AWS::Lambda::Function
+      Properties:
+        Code:
+          ZipFile: |
+            import json
+            import cfnresponse
+            def handler(event, context):
+                print("Event: %s" % json.dumps(event))
+                resourceProperties = event["ResourceProperties"]
+                responseData = {
+                    "RoleMapping": {
+                        resourceProperties["IdentityProvider"]: {
+                            "Type": resourceProperties["Type"]
+                        }
+                    }
+                }
+                if resourceProperties["AmbiguousRoleResolution"]:
+                    responseData["RoleMapping"][resourceProperties["IdentityProvider"]]["AmbiguousRoleResolution"] = \
+                    resourceProperties["AmbiguousRoleResolution"]
+                print(responseData)
+                cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+        Handler: !Join
+          - ''
+          - - index
+            - .handler
+        Role: !GetAtt CognitoRoleMapperLambdaExecutionRole.Arn
+        Runtime: python3.7
+        Timeout: 30
+
+  CognitoRoleMapperLambdaExecutionRole:
+      Type: 'AWS::IAM::Role'
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: 2012-10-17
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                - 'sts:AssumeRole'
+        Path: /
+        Policies:
+          - PolicyName: root
+            PolicyDocument:
+              Version: 2012-10-17
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - 'logs:CreateLogGroup'
+                    - 'logs:CreateLogStream'
+                    - 'logs:PutLogEvents'
+                  Resource: 'arn:aws:logs:*:*:*'
+
+  SimpleFileManagerIdentityPool:
+    Type: AWS::Cognito::IdentityPool
+    Properties:
+      AllowUnauthenticatedIdentities: False
+      CognitoIdentityProviders:
+        - ClientId: !Ref SimpleFileManagerWebAppClient
+          ProviderName: !GetAtt SimpleFileManagerUserPool.ProviderName
+
+  # More hacky cfn for getting the role mapping
+  TransformedRoleMapping:
+    Type: Custom::TransformedRoleMapping
+    Properties:
+      ServiceToken: !GetAtt CognitoRoleMappingTransformer.Arn
+      Type: Token
+      AmbiguousRoleResolution: Deny
+      IdentityProvider:
+        'Fn::Join':
+          - ':'
+          - - 'Fn::GetAtt':
+                - SimpleFileManagerUserPool
+                - ProviderName
+            - Ref: SimpleFileManagerWebAppClient
+
+  CognitoStandardAuthDefaultRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Federated: "cognito-identity.amazonaws.com"
+            Action:
+              - "sts:AssumeRoleWithWebIdentity"
+            Condition:
+              StringEquals:
+                "cognito-identity.amazonaws.com:aud": !Ref SimpleFileManagerIdentityPool
+              "ForAnyValue:StringEquals":
+                "cognito-identity.amazonaws.com:amr": authenticated
+      Policies:
+        - PolicyName: !Sub "${AWS::StackName}-AuthNoGroup"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Action: "*"
+                Resource: "*"
+                Effect: "Deny"
+
+  CognitoStandardUnauthDefaultRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Federated: "cognito-identity.amazonaws.com"
+            Action:
+              - "sts:AssumeRoleWithWebIdentity"
+            Condition:
+              StringEquals:
+                "cognito-identity.amazonaws.com:aud": !Ref SimpleFileManagerIdentityPool
+              "ForAnyValue:StringEquals":
+                "cognito-identity.amazonaws.com:amr": unauthenticated
+
+  SimpleFileManagerIdentityPoolRoleMapping:
+    Type: AWS::Cognito::IdentityPoolRoleAttachment
+    Properties:
+      IdentityPoolId: !Ref SimpleFileManagerIdentityPool
+      RoleMappings: !GetAtt TransformedRoleMapping.RoleMapping
+      Roles:
+        authenticated: !GetAtt CognitoStandardAuthDefaultRole.Arn
+        unauthenticated: !GetAtt CognitoStandardUnauthDefaultRole.Arn
+
+  SimpleFileManagerAdminGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      Description: 'User group for Simple File Manager Admins'
+      RoleArn: !GetAtt SimpleFileManagerAdminRole.Arn
+      UserPoolId: !Ref SimpleFileManagerUserPool
+      GroupName: !Sub "${AWS::StackName}-Admins"
+
+  SimpleFileManagerAdminAccount:
+    Type: AWS::Cognito::UserPoolUser
+    Properties:
+      DesiredDeliveryMediums:
+        - EMAIL
+      UserAttributes: [{"Name": "email", "Value": !Ref AdminEmail}]
+      Username: !Ref AdminEmail
+      UserPoolId: !Ref SimpleFileManagerUserPool
+
+  SimpleFileManagerAdminRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Federated: "cognito-identity.amazonaws.com"
+            Action:
+              - "sts:AssumeRoleWithWebIdentity"
+            Condition:
+              StringEquals:
+                "cognito-identity.amazonaws.com:aud": !Ref SimpleFileManagerIdentityPool
+              "ForAnyValue:StringEquals":
+                "cognito-identity.amazonaws.com:amr": authenticated
+      Policies:
+        - PolicyName:  !Sub "${AWS::StackName}-AdminPolicy"
+          PolicyDocument: !Sub
+            - |-
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Action": [
+                      "execute-api:Invoke"
+                    ],
+                    "Effect": "Allow",
+                    "Resource": ["arn:aws:execute-api:${region}:${account}:${api}/*"]
+                  }
+                ]
+              }
+            - {
+              region: !Ref "AWS::Region",
+              account: !Ref "AWS::AccountId",
+              api: !Ref ApiId,
+            }
+
+  AddAdminUserToAdminGroup:
+    DependsOn: SimpleFileManagerAdminAccount
+    Type: AWS::Cognito::UserPoolUserToGroupAttachment
+    Properties:
+      GroupName: !Ref SimpleFileManagerAdminGroup
+      Username: !Ref AdminEmail
+      UserPoolId: !Ref SimpleFileManagerUserPool
+
+Outputs:
+  AdminRoleArn:
+    Value: !GetAtt SimpleFileManagerAdminRole.Arn
+  UserPoolId:
+    Value: !Ref SimpleFileManagerUserPool
+  IdentityPoolId:
+    Value: !Ref SimpleFileManagerIdentityPool
+  UserPoolClientId:
+    Value: !Ref SimpleFileManagerWebAppClient

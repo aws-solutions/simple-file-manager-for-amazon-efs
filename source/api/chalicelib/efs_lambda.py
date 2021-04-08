@@ -43,11 +43,11 @@ def make_dir(event):
 
 def upload(event):
     print(event)
-    "{'operation': 'upload', 'path': '/mnt/efs', 'form_data': {'dzuuid': '10f726ea-ae1d-4363-9a97-4bf6772cd4df', 'dzchunkindex': '0', 'dzchunksize': '1000000', 'dztotalchunkcount': '1', 'dzchunkbyteoffset': '0', 'filename': 'Log at 2020-08-11 12-17-21 PM.txt', 'content': '(Emitted value instead of an instance of Error)'}}"
+    "{'operation': 'upload', 'path': '/mnt/efs', 'chunk_data': {'dzuuid': '10f726ea-ae1d-4363-9a97-4bf6772cd4df', 'dzchunkindex': '0', 'dzchunksize': '1000000', 'dztotalchunkcount': '1', 'dzchunkbyteoffset': '0', 'filename': 'Log at 2020-08-11 12-17-21 PM.txt', 'content': '(Emitted value instead of an instance of Error)'}}"
     path = event['path']
-    filename = event['form_data']['filename']
-    file_content_decoded = base64.b64decode(event['form_data']['content'])
-    current_chunk = int(event['form_data']['dzchunkindex'])
+    filename = event['chunk_data']['filename']
+    file_content_decoded = base64.b64decode(event['chunk_data']['content'])
+    current_chunk = int(event['chunk_data']['dzchunkindex'])
     save_path = os.path.join(path, filename)
 
     if os.path.exists(save_path) and current_chunk == 0:
@@ -55,17 +55,17 @@ def upload(event):
 
     try:
         with open(save_path, 'ab') as f:
-            f.seek(int(event['form_data']['dzchunkbyteoffset']))
+            f.seek(int(event['chunk_data']['dzchunkbyteoffset']))
             f.write(file_content_decoded)
     except OSError as error:
         print('Could not write to file: {error}'.format(error=error))
         return {"message": "couldn't write the file to disk", "statusCode": 500}
 
-    total_chunks = int(event['form_data']['dztotalchunkcount'])
+    total_chunks = int(event['chunk_data']['dztotalchunkcount'])
 
     if current_chunk + 1 == total_chunks:
-        if int(os.path.getsize(save_path)) != int(event['form_data']['dztotalfilesize']):
-            print("File {filename} was completed, but there is a size mismatch. Was {size} but expected {total}".format(filename=filename, size=os.path.getsize(save_path), total=event['form_data']['dztotalfilesize']))
+        if int(os.path.getsize(save_path)) != int(event['chunk_data']['dztotalfilesize']):
+            print("File {filename} was completed, but there is a size mismatch. Was {size} but expected {total}".format(filename=filename, size=os.path.getsize(save_path), total=event['chunk_data']['dztotalfilesize']))
             return {"message": "Size mismatch", "statusCode": 500}
         else:
             print("file {filename} has been uploaded successfully".format(filename=filename))
@@ -78,7 +78,7 @@ def upload(event):
 def download(event):
     # first call {"path": "./", "filename": "test.txt"}
     # successive calls
-    # {"path": "./", "filename": "test_video.mp4", "form_data": {'dzchunkindex': chunk['dzchunkindex'],
+    # {"path": "./", "filename": "test_video.mp4", "chunk_data": {'dzchunkindex': chunk['dzchunkindex'],
     # 'dzchunkbyteoffset': chunk['dzchunkbyteoffset']}}
     path = event['path']
     filename = event['filename']
@@ -87,9 +87,9 @@ def download(event):
     file_size = os.path.getsize(file_path)
     chunks = math.ceil(file_size / chunk_size)
 
-    if "form_data" in event:
-        start_index = event['form_data']['dzchunkbyteoffset']
-        current_chunk = event['form_data']['dzchunkindex']
+    if "chunk_data" in event:
+        start_index = event['chunk_data']['dzchunkbyteoffset']
+        current_chunk = event['chunk_data']['dzchunkindex']
         try:
             with open(file_path, 'rb') as f:
                 f.seek(start_index)
