@@ -11,12 +11,17 @@
     "botoConfig": {
       "Type": "String",
       "Description": "Botocore config"
+    },
+    "ApiHandlerIamRole": {
+      "Type": "String",
+      "Description": "Arn of the API Handler IAM Role"
     }
   },
   "Resources": {
     "APIHandler": {
       "Properties": {
         "Runtime": "python3.8",
+        "Role": {"Ref": "ApiHandlerIamRole"},
         "Environment": {
           "Variables": {
                 "botoConfig": {

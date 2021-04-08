@@ -18,6 +18,60 @@ Mappings:
       TemplateKeyPrefix: "efs_file_manager/%%VERSION%%"
 
 Resources:
+  # File Manager API Handler IAM Role
+  # TODO: Scope some of the inline policies down
+  EFSFileManagerIamRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: !Sub "${AWS::StackName}-API-Policy"
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - "lambda:CreateFunction"
+                  - "lambda:InvokeFunction"
+                  - "lambda:GetFunction"
+                  - "iam:CreateRole"
+                  - "iam:AttachRolePolicy"
+                  - "elasticfilesystem:DescribeMountTargetSecurityGroups"
+                  - "ec2:DescribeSecurityGroups"
+                  - "ec2:DescribeSubnets"
+                  - "ec2:DescribeVpcs"
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - "elasticfilesystem:DescribeMountTargets"
+                  - "elasticfilesystem:DeleteAccessPoint"
+                  - "elasticfilesystem:DescribeFileSystems"
+                  - "elasticfilesystem:CreateAccessPoint"
+                Resource:
+                  - "arn:aws:elasticfilesystem:*:764127651952:file-system/*"
+                  - "arn:aws:elasticfilesystem:*:764127651952:access-point/*"
+              # TODO: Add iam:passedtoservice condition key
+              - Effect: Allow
+                Action:
+                  - "iam:PassRole"
+                Resource:
+                  - "arn:aws:iam::764127651952:role/fs-*"
+
+
   # File Manager API stack
   EFSFileManagerAPI:
     Type: "AWS::CloudFormation::Stack"
@@ -34,6 +88,7 @@ Resources:
           ],
         ]
       Parameters:
+        ApiHandlerIamRole: !GetAtt EFSFileManagerIamRole.Arn
         botoConfig: '{"user_agent_extra": "AwsSolution/XXX/%%VERSION%%"}'
         DeploymentPackageBucket: 
           !Join ["-", [!FindInMap ["SourceCode", "General", "RegionalS3Bucket"], Ref: "AWS::Region"]]
@@ -47,25 +102,25 @@ Resources:
           ]
 
   # Deploy Web Application stack
-  EFSFileWebApplication:
-    Type: "AWS::CloudFormation::Stack"
-    Properties:
-      TemplateURL:
-        !Join [
-          "",
-          [
-            "https://",
-            !FindInMap [ "SourceCode", "General", "GlobalS3Bucket" ],
-            ".s3.amazonaws.com/",
-            !FindInMap ["SourceCode", "General", "TemplateKeyPrefix"],
-            "/efs-file-manager-web.template",
-          ],
-        ]
-      Parameters:
-        FileManagerAPIEndpoint: !GetAtt EFSFileManagerAPI.Outputs.EndpointURL
-        UserPoolId: "Mock"
-        IdentityPoolId: "Mock"
-        PoolClientId: "Mock"
+  # EFSFileWebApplication:
+  #   Type: "AWS::CloudFormation::Stack"
+  #   Properties:
+  #     TemplateURL:
+  #       !Join [
+  #         "",
+  #         [
+  #           "https://",
+  #           !FindInMap [ "SourceCode", "General", "GlobalS3Bucket" ],
+  #           ".s3.amazonaws.com/",
+  #           !FindInMap ["SourceCode", "General", "TemplateKeyPrefix"],
+  #           "/efs-file-manager-web.template",
+  #         ],
+  #       ]
+  #     Parameters:
+  #       FileManagerAPIEndpoint: !GetAtt EFSFileManagerAPI.Outputs.EndpointURL
+  #       UserPoolId: "Mock"
+  #       IdentityPoolId: "Mock"
+  #       PoolClientId: "Mock"
 
 
   # Future deploy authentication stack.

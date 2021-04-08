@@ -48,12 +48,12 @@ export default {
   },
   methods: {
     async createDirectory (name, path) {
+          let dir_data = {"path": path, "name": name}
           const params = {
-
-              queryStringParameters: {
-                path: path,
-                name: name
-              }
+              body: dir_data,
+              headers: {
+                "Content-Type": "application/json"
+          },
          }
           try {
               let response = await API.post('fileManagerApi', '/api/objects/' + this.$route.params.id + '/dir', params)
