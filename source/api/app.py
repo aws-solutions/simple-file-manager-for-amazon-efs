@@ -8,7 +8,7 @@ import logging
 import time
 from requests_toolbelt import MultipartDecoder
 import zipfile
-from chalice import Chalice, Response, ChaliceViewError, BadRequestError, UnauthorizedError, ForbiddenError, NotFoundError, ConflictError, TooManyRequestsError
+from chalice import Chalice, Response, ChaliceViewError, BadRequestError, UnauthorizedError, ForbiddenError, NotFoundError, ConflictError, TooManyRequestsError, IAMAuthorizer
 
 
 # Misc global variables
@@ -16,9 +16,13 @@ from chalice import Chalice, Response, ChaliceViewError, BadRequestError, Unauth
 
 app = Chalice(app_name='api')
 app.log.setLevel(logging.DEBUG)
-app.api.binary_types.append('multipart/form-data')
 efs_lambda = os.path.join(
     os.path.dirname(__file__), 'chalicelib', 'efs_lambda.py')
+
+# Cognito resources
+# From cloudformation stack
+authorizer = IAMAuthorizer()
+
 
 # AWS Clients
 
@@ -28,20 +32,21 @@ iam = boto3.client('iam')
 
 
 # Helper functions
-def parse_multipart_object(headers, content):
-    for header in headers.split(';'):
-        # Only get the specific dropzone form values we need
-        if header == 'form-data':
-            continue
-        elif 'filename' in header:
-            filename_object = {"filename": header.split('"')[1::2][0], "content": content}
-            return filename_object
-        elif 'name="file"' in header:
-            continue
-        else:
-            header_name = header.split('"')[1::2][0]
-            metadata_object = {header_name: content}
-            return metadata_object
+
+# def parse_multipart_object(headers, content):
+#     for header in headers.split(';'):
+#         # Only get the specific dropzone form values we need
+#         if header == 'form-data':
+#             continue
+#         elif 'filename' in header:
+#             filename_object = {"filename": header.split('"')[1::2][0], "content": content}
+#             return filename_object
+#         elif 'name="file"' in header:
+#             continue
+#         else:
+#             header_name = header.split('"')[1::2][0]
+#             metadata_object = {header_name: content}
+#             return metadata_object
 
 
 def proxy_operation_to_efs_lambda(filesystem_id, event):
@@ -131,41 +136,60 @@ def create_function_zip():
 
 
 def create_function_role(filesystem_name):
-    # TODO: This will need to be updated to allow actual operations
-    basic_role = """
-        Version: '2012-10-17'
-        Statement:
-            - Effect: Allow
-              Principal: 
-                Service: lambda.amazonaws.com
-              Action: sts:AssumeRole
-        """
-    # TODO: Add try / except / else blocks and handle errors
-    # lambda.awazonaws.com can assume this role.
-    role_response = iam.create_role(RoleName='{filesystem}-manager-role'.format(filesystem=filesystem_name),
-                    AssumeRolePolicyDocument=json.dumps(yaml.load(basic_role)))
+    trust_policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "",
+                "Effect": "Allow",
+                "Principal": {
+                    "Service": "lambda.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+            }
+        ]
+    }
 
-    # TODO: Change these to a least privilege role defined in the cloudformation
-    # This role has the AWSLambdaBasicExecutionRole managed policy.
-    iam.attach_role_policy(RoleName='{filesystem}-manager-role'.format(filesystem=filesystem_name),
+    role_name = f'{filesystem_name}-manager-role'
+    path = '/'
+    description = f'IAM Role for filesystem {filesystem_name} manager lambda'
+
+    try:
+        role_response = iam.create_role(
+            Path=path,
+            RoleName=role_name,
+            AssumeRolePolicyDocument=json.dumps(trust_policy),
+            Description=description,
+            MaxSessionDuration=3600
+        )
+    except Exception as e:
+        app.log.debug(e)
+        return ChaliceViewError(e)
+    
+
+    iam.attach_role_policy(RoleName=role_name,
                            PolicyArn='arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole')
-    iam.attach_role_policy(RoleName='{filesystem}-manager-role'.format(filesystem=filesystem_name),
-                           PolicyArn='arn:aws:iam::aws:policy/AdministratorAccess')
-    app.log.debug(role_response)
-    role_arn = role_response['Role']['Arn']
+    iam.attach_role_policy(RoleName=role_name,
+                           PolicyArn='arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole')
+    iam.attach_role_policy(RoleName=role_name,
+                           PolicyArn='arn:aws:iam::aws:policy/AmazonElasticFileSystemClientReadWriteAccess')
+    
+    
+    role_arn = str(role_response['Role']['Arn'])
+    
     return role_arn
 
 
 def create_function(filesystem_id, access_point_arn, vpc):
     code = create_function_zip()
-    # TODO: Figure out whats up here
-    #role = create_function_role(filesystem_id)
+    role = create_function_role(filesystem_id)
+    # TODO: Add retry logic instead of relying on sleep
+    time.sleep(10)
     try:
         response = serverless.create_function(
             FunctionName='{filesystem}-manager-lambda'.format(filesystem=filesystem_id),
             Runtime='python3.8',
-            Role='arn:aws:iam::764127651952:role/RootAccessLambdaRole', #TODO: remove
-            #Role=role,
+            Role=role,
             Handler='var/task/chalicelib/efs_lambda.lambda_handler',
             Code={
                 'ZipFile': code
@@ -200,12 +224,6 @@ def create_function(filesystem_id, access_point_arn, vpc):
         return response
 
 
-# Routes
-@app.route('/')
-def index():
-    return {'hello': 'world'}
-
-
 def has_manager_lambda(filesystem_id):
     try:
         serverless.get_function(
@@ -221,7 +239,13 @@ def has_manager_lambda(filesystem_id):
         return True
 
 
-@app.route('/filesystems', methods=["GET"], cors=True)
+# Routes
+@app.route('/')
+def index():
+    return {'hello': 'world'}
+
+
+@app.route('/filesystems', methods=["GET"], cors=True, authorizer=authorizer)
 def list_filesystems():
     try:
         response = efs.describe_file_systems()
@@ -238,7 +262,7 @@ def list_filesystems():
         return formatted_filesystems
 
 
-@app.route('/filesystems/{filesystem_id}', methods=['GET'], cors=True)
+@app.route('/filesystems/{filesystem_id}', methods=['GET'], cors=True, authorizer=authorizer)
 def describe_filesystem(filesystem_id):
     try:
         response = efs.describe_file_systems(
@@ -251,7 +275,7 @@ def describe_filesystem(filesystem_id):
         return json.dumps(response, indent=4, sort_keys=True, default=str)
 
 
-@app.route('/filesystems/{filesystem_id}/netinfo', methods=['GET'], cors=True)
+@app.route('/filesystems/{filesystem_id}/netinfo', methods=['GET'], cors=True, authorizer=authorizer)
 def get_netinfo_for_filesystem(filesystem_id):
     netinfo = []
     try:
@@ -281,7 +305,7 @@ def get_netinfo_for_filesystem(filesystem_id):
     return netinfo
 
 
-@app.route('/filesystems/{filesystem_id}/lambda', methods=['POST'], cors=True)
+@app.route('/filesystems/{filesystem_id}/lambda', methods=['POST'], cors=True, authorizer=authorizer)
 def create_filesystem_lambda(filesystem_id):
     request = app.current_request
     json_body = request.json_body
@@ -306,7 +330,7 @@ def create_filesystem_lambda(filesystem_id):
         app.log.error(error)
         raise ChaliceViewError('Check API Logs')
 
-    # TODO: 100% should not do this, keeping until I look into a better method to ensure access point is available
+    # TODO: Add retry logic instead of relying on sleep
     time.sleep(10)
 
     try:
@@ -318,34 +342,21 @@ def create_filesystem_lambda(filesystem_id):
         return response
 
 # TODO: Change this url path to /objects/$fsid/upload
-@app.route('/upload/{filesystem_id}', methods=["POST"], content_types=['multipart/form-data'], cors=True)
+@app.route('/upload/{filesystem_id}', methods=["POST"], cors=True, authorizer=authorizer)
 def upload(filesystem_id):
-    if app.current_request.query_params['path']:
+    print(app.current_request.query_params)
+    try:
         path = app.current_request.query_params['path']
-    else:
-        app.log.error('Missing required query param: path')
-        raise BadRequestError('Missing required query param: path')
+        filename = app.current_request.query_params['filename']
+    except KeyError as e:
+        app.log.error('Missing required query param: {e}'.format(e=e))
+        raise BadRequestError('Missing required query param: {e}'.format(e=e))
 
-    #app.log.debug((app.current_request.raw_body)
-    #app.log.debug((app.current_request.headers['content-type'])
+    request = app.current_request
+    chunk_data = request.json_body
+    chunk_data["filename"] = filename
 
-    parsed_form_object = {}
-    for part in MultipartDecoder(app.current_request.raw_body, app.current_request.headers['content-type']).parts:
-        raw_name = str(part.headers[b'Content-Disposition'], 'utf-8')
-        if "filename" in raw_name:
-            b64_content = str(base64.b64encode(part.content), 'utf-8')
-            parsed_object = parse_multipart_object(raw_name, b64_content)
-        else:
-            parsed_object = parse_multipart_object(raw_name, part.content.decode())
-
-        if parsed_object is None:
-            pass
-        else:
-            parsed_form_object.update(parsed_object)
-
-    app.log.debug(parsed_form_object)
-
-    filemanager_event = {"operation": "upload", "path": path, "form_data": parsed_form_object}
+    filemanager_event = {"operation": "upload", "path": path, "chunk_data": chunk_data}
 
     operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
 
@@ -362,7 +373,7 @@ def upload(filesystem_id):
         raise ChaliceViewError('Error uploading file: {payload}'.format(payload=payload))
 
 
-@app.route('/download/{filesystem_id}', methods=["GET"], cors=True)
+@app.route('/download/{filesystem_id}', methods=["GET"], cors=True, authorizer=authorizer)
 def download(filesystem_id):
     print(app.current_request.query_params)
     try:
@@ -376,7 +387,7 @@ def download(filesystem_id):
             chunk_index = app.current_request.query_params['dzchunkindex']
             chunk_offset = app.current_request.query_params['dzchunkbyteoffset']
             filemanager_event = {"operation": "download", "path": path, "filename": filename,
-                                 "form_data": {"dzchunkindex": int(chunk_index), "dzchunkbyteoffset": int(chunk_offset)}}
+                                 "chunk_data": {"dzchunkindex": int(chunk_index), "dzchunkbyteoffset": int(chunk_offset)}}
             operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
             payload_encoded = operation_result['Payload']
             payload = json.loads(payload_encoded.read().decode("utf-8"))
@@ -391,7 +402,7 @@ def download(filesystem_id):
             raise BadRequestError('Unsupported or missing query params')
 
 
-@app.route('/objects/{filesystem_id}/dir', methods=['POST'], content_types=['application/x-www-form-urlencoded'], cors=True)
+@app.route('/objects/{filesystem_id}/dir', methods=['POST'], content_types=['application/x-www-form-urlencoded'], cors=True, authorizer=authorizer)
 def make_dir(filesystem_id):
     try:
         name = app.current_request.query_params['name']
@@ -415,7 +426,7 @@ def make_dir(filesystem_id):
             raise ChaliceViewError('Error creating dir: {payload}'.format(payload=payload))
 
 
-@app.route('/objects/{filesystem_id}', methods=['DELETE'], cors=True)
+@app.route('/objects/{filesystem_id}', methods=['DELETE'], cors=True, authorizer=authorizer)
 def delete_object(filesystem_id):
     try:
         name = app.current_request.query_params['name']
@@ -439,7 +450,7 @@ def delete_object(filesystem_id):
             raise ChaliceViewError('Error creating dir: {payload}'.format(payload=payload))
 
 
-@app.route('/objects/{filesystem_id}', methods=['GET'], cors=True)
+@app.route('/objects/{filesystem_id}', methods=['GET'], cors=True, authorizer=authorizer)
 def list_objects(filesystem_id):
     if app.current_request.query_params['path']:
         path = app.current_request.query_params['path']

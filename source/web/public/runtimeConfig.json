@@ -1,5 +1,7 @@
 {
     "awsRegion": "",
-    "fileManagerApiUrl": ""
+    "fileManagerApiUrl": "",
+    "userPoolId": "",
+    "userPoolIdClientId": "",
+    "identityPoolId": ""
 }
-

@@ -8,6 +8,7 @@
 </template>
 
 <script>
+import { API } from 'aws-amplify';
 
 export default {
   name: 'download',
@@ -28,7 +29,6 @@ export default {
         dzchunkbyteoffset: null,
         totalChunks: null,
         max: 95,
-        base_url: 'https://i076sdxd27.execute-api.us-west-2.amazonaws.com/api/download/fs-b44095b1',
         downloadDone: false
     }
   },
@@ -36,19 +36,25 @@ export default {
       this.downloadFile()
   },
   methods: {
-    async downloadChunk (url) {
-          let response = await fetch(url);
-          var body = response.json()
-          return body
+    async downloadChunk (requestParams) {
+          let response = await API.get('fileManagerApi', '/api/download/' + this.$route.params.id, requestParams)
+          return response
       },
     async downloadFile () {
           if (this.dzchunkindex == null && this.dzchunkbyteoffset == null) {
-              let url = this.base_url + '?path=' + this.path + '&filename=' + this.filename
-              let chunk = await this.downloadChunk(url)
+
+              let requestParams = { 
+                  queryStringParameters: {
+                    "path": this.path,
+                    "filename": this.filename
+                  }
+              };
+              
+              let chunk = await this.downloadChunk(requestParams)
+              
               
               let offset = chunk.dzchunkbyteoffset
               let chunkIndex = chunk.dzchunkindex
-
 
               let chunkData = chunk.chunk_data
 
@@ -62,9 +68,18 @@ export default {
               
               this.downloadFile()
           }
-          else {
-              let url = this.base_url + '?path=' + this.path + '&filename=' + this.filename + '&dzchunkindex=' + this.dzchunkindex + '&dzchunkbyteoffset=' + this.dzchunkbyteoffset
-              let chunk = await this.downloadChunk(url)
+          else {              
+              let requestParams = { 
+                  queryStringParameters: {
+                    "path": this.path,
+                    "filename": this.filename,
+                    "dzchunkindex": this.dzchunkindex,
+                    "dzchunkbyteoffset": this.dzchunkbyteoffset
+                  }
+              };
+              
+              
+              let chunk = await this.downloadChunk(requestParams)
 
               let offset = chunk.dzchunkbyteoffset
               let chunkIndex = chunk.dzchunkindex
