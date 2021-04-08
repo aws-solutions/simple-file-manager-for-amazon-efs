@@ -153,6 +153,8 @@ global_dist_dir="$build_dir/global-s3-assets"
 regional_dist_dir="$build_dir/regional-s3-assets"
 dist_dir="$build_dir/dist"
 source_dir="$build_dir/../source"
+helper_dir="$build_dir/../source/helper"
+website_dir="$build_dir/../source/web"
 
 # Create and activate a temporary Python environment for this script.
 echo "------------------------------------------------------------------------------"
@@ -208,6 +210,8 @@ echo "--------------------------------------------------------------------------
 
 echo "Preparing template files:"
 cp "$build_dir/efs-file-manager.yaml" "$global_dist_dir/efs-file-manager.template"
+cp "$build_dir/efs-file-manager-web.yaml" "$global_dist_dir/efs-file-manager-web.template"
+
 find "$global_dist_dir"
 echo "Updating template source bucket in template files with '$global_bucket'"
 echo "Updating code source bucket in template files with '$regional_bucket'"
@@ -219,6 +223,12 @@ new_version="s/%%VERSION%%/$version/g"
 sed -i.orig -e "$new_global_bucket" "$global_dist_dir/efs-file-manager.template"
 sed -i.orig -e "$new_regional_bucket" "$global_dist_dir/efs-file-manager.template"
 sed -i.orig -e "$new_version" "$global_dist_dir/efs-file-manager.template"
+
+# Update templates in place. Copy originals to [filename].orig
+sed -i.orig -e "$new_global_bucket" "$global_dist_dir/efs-file-manager-web.template"
+sed -i.orig -e "$new_regional_bucket" "$global_dist_dir/efs-file-manager-web.template"
+sed -i.orig -e "$new_version" "$global_dist_dir/efs-file-manager-web.template"
+
 
 echo "------------------------------------------------------------------------------"
 echo "Build API"
@@ -266,6 +276,44 @@ rm -rf ./dist
 #echo "Compiling the vue app"
 #npm run build
 #echo "Built demo webapp"
+
+
+echo "------------------------------------------------------------------------------"
+echo "Building VueJS Website"
+echo "------------------------------------------------------------------------------"
+
+cd "$website_dir" || exit 1
+[ -e dist ] && rm -r dist
+mkdir -p dist
+echo "Installing node dependencies"
+npm install
+echo "Compiling the vue app"
+npm run build
+echo "Built demo webapp"
+# Remove old web
+rm -rf "$regional_dist_dir/web"
+# Now we have a dist directory in web that we can move to dist_dir
+mv "./dist/" "$regional_dist_dir/web"
+
+
+echo "------------------------------------------------------------------------------"
+echo "Building Website CFN Helper Custom Resource VueJS"
+echo "------------------------------------------------------------------------------"
+
+echo "Building website helper function"
+cd "$helper_dir" || exit 1
+[ -e dist ] && rm -r dist
+mkdir -p dist
+zip -q -g ./dist/websitehelper.zip ./website_helper.py
+cp "./dist/websitehelper.zip" "$regional_dist_dir/websitehelper.zip"
+echo "Cleaning up website helper function"
+rm -rf ./dist
+
+
+
+
+
+
 
 
 echo "------------------------------------------------------------------------------"

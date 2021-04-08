@@ -22,7 +22,7 @@ Resources:
   EFSFileManagerAPI:
     Type: "AWS::CloudFormation::Stack"
     Properties:
-      TemplateURL:
+      TemplateURL: 
         !Join [
           "",
           [
@@ -35,7 +35,8 @@ Resources:
         ]
       Parameters:
         botoConfig: '{"user_agent_extra": "AwsSolution/XXX/%%VERSION%%"}'
-        DeploymentPackageBucket: !Join ["-", [!FindInMap ["SourceCode", "General", "RegionalS3Bucket"], Ref: "AWS::Region"]]
+        DeploymentPackageBucket: 
+          !Join ["-", [!FindInMap ["SourceCode", "General", "RegionalS3Bucket"], Ref: "AWS::Region"]]
         DeploymentPackageKey:
           !Join [
             "/",
@@ -44,3 +45,30 @@ Resources:
             "filemanagerapi.zip",
             ],
           ]
+
+  # Deploy Web Application stack
+  EFSFileWebApplication:
+    Type: "AWS::CloudFormation::Stack"
+    Properties:
+      TemplateURL:
+        !Join [
+          "",
+          [
+            "https://",
+            !FindInMap [ "SourceCode", "General", "GlobalS3Bucket" ],
+            ".s3.amazonaws.com/",
+            !FindInMap ["SourceCode", "General", "TemplateKeyPrefix"],
+            "/efs-file-manager-web.template",
+          ],
+        ]
+      Parameters:
+        FileManagerAPIEndpoint: !GetAtt EFSFileManagerAPI.Outputs.EndpointURL
+        UserPoolId: "Mock"
+        IdentityPoolId: "Mock"
+        PoolClientId: "Mock"
+
+
+  # Future deploy authentication stack.
+
+
+
