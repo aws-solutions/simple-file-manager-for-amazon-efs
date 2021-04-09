@@ -8,6 +8,10 @@ AWSTemplateFormatVersion: 2010-09-09
 
 Description: (SO0668) - Solution - Master Template
 
+Parameters:
+  AdminEmail:
+    Description: Email address of the Simple File Manager Administrator
+    Type: String
 
 Mappings:
   SourceCode:
@@ -62,14 +66,14 @@ Resources:
                   - "elasticfilesystem:DescribeFileSystems"
                   - "elasticfilesystem:CreateAccessPoint"
                 Resource:
-                  - "arn:aws:elasticfilesystem:*:764127651952:file-system/*"
-                  - "arn:aws:elasticfilesystem:*:764127651952:access-point/*"
+                  - "arn:aws:elasticfilesystem:*:*:file-system/*"
+                  - "arn:aws:elasticfilesystem:*:*:access-point/*"
               # TODO: Add iam:passedtoservice condition key
               - Effect: Allow
                 Action:
                   - "iam:PassRole"
                 Resource:
-                  - "arn:aws:iam::764127651952:role/fs-*"
+                  - "arn:aws:iam::*:role/fs-*"
 
 
   # File Manager API stack
@@ -101,29 +105,49 @@ Resources:
             ],
           ]
 
-  # Deploy Web Application stack
-  # EFSFileWebApplication:
-  #   Type: "AWS::CloudFormation::Stack"
-  #   Properties:
-  #     TemplateURL:
-  #       !Join [
-  #         "",
-  #         [
-  #           "https://",
-  #           !FindInMap [ "SourceCode", "General", "GlobalS3Bucket" ],
-  #           ".s3.amazonaws.com/",
-  #           !FindInMap ["SourceCode", "General", "TemplateKeyPrefix"],
-  #           "/efs-file-manager-web.template",
-  #         ],
-  #       ]
-  #     Parameters:
-  #       FileManagerAPIEndpoint: !GetAtt EFSFileManagerAPI.Outputs.EndpointURL
-  #       UserPoolId: "Mock"
-  #       IdentityPoolId: "Mock"
-  #       PoolClientId: "Mock"
+  # Deploy Authentication stack.
+  EFSFileAuthentication:
+    Type: "AWS::CloudFormation::Stack"
+    Properties:
+      TemplateURL:
+        !Join [
+          "",
+          [
+            "https://",
+            !FindInMap [ "SourceCode", "General", "GlobalS3Bucket" ],
+            ".s3.amazonaws.com/",
+            !FindInMap ["SourceCode", "General", "TemplateKeyPrefix"],
+            "/efs-file-manager-auth.template",
+          ],
+        ]
+      Parameters:
+        AdminEmail: !Ref AdminEmail
+        ApiId: !GetAtt EFSFileManagerAPI.Outputs.RestAPIId
 
 
-  # Future deploy authentication stack.
+    # Deploy Web Application stack
+  EFSFileWebApplication:
+    Type: "AWS::CloudFormation::Stack"
+    Properties:
+      TemplateURL:
+        !Join [
+          "",
+          [
+            "https://",
+            !FindInMap [ "SourceCode", "General", "GlobalS3Bucket" ],
+            ".s3.amazonaws.com/",
+            !FindInMap ["SourceCode", "General", "TemplateKeyPrefix"],
+            "/efs-file-manager-web.template",
+          ],
+        ]
+      Parameters:
+        FileManagerAPIEndpoint: !Join [ '', !Split [ '/api/', !GetAtt EFSFileManagerAPI.Outputs.EndpointURL ] ]
+        UserPoolId: !GetAtt EFSFileAuthentication.Outputs.UserPoolId
+        IdentityPoolId: !GetAtt EFSFileAuthentication.Outputs.IdentityPoolId
+        PoolClientId: !GetAtt EFSFileAuthentication.Outputs.UserPoolClientId
 
+  Outputs:
+    EFSFileSimpleWebsiteUrl:
+       Value: !GetAtt EFSFileWebApplication.Outputs.EFSFileSimpleWebsiteUrl
 
 

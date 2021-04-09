@@ -211,6 +211,7 @@ echo "--------------------------------------------------------------------------
 echo "Preparing template files:"
 cp "$build_dir/efs-file-manager.yaml" "$global_dist_dir/efs-file-manager.template"
 cp "$build_dir/efs-file-manager-web.yaml" "$global_dist_dir/efs-file-manager-web.template"
+cp "$build_dir/efs-file-manager-auth.yaml" "$global_dist_dir/efs-file-manager-auth.template"
 
 find "$global_dist_dir"
 echo "Updating template source bucket in template files with '$global_bucket'"
@@ -228,6 +229,11 @@ sed -i.orig -e "$new_version" "$global_dist_dir/efs-file-manager.template"
 sed -i.orig -e "$new_global_bucket" "$global_dist_dir/efs-file-manager-web.template"
 sed -i.orig -e "$new_regional_bucket" "$global_dist_dir/efs-file-manager-web.template"
 sed -i.orig -e "$new_version" "$global_dist_dir/efs-file-manager-web.template"
+
+# Update templates in place. Copy originals to [filename].orig
+sed -i.orig -e "$new_global_bucket" "$global_dist_dir/efs-file-manager-auth.template"
+sed -i.orig -e "$new_regional_bucket" "$global_dist_dir/efs-file-manager-auth.template"
+sed -i.orig -e "$new_version" "$global_dist_dir/efs-file-manager-auth.template"
 
 
 echo "------------------------------------------------------------------------------"
