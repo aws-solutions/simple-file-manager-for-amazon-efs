@@ -88,7 +88,6 @@ export default {
         this.totalChunks = Math.ceil(fileSize / this.chunkSize)
         let chunk = this.fileToUpload.slice(0, this.chunkSize + 1)
         let chunkData = {}
-
         this.uploading = true
 
         chunkData.dzchunkindex = 0
@@ -104,9 +103,15 @@ export default {
           alert("Upload failed")
         }
         else {
-          let nextChunkIndex = 1
-          let nextChunkOffset = this.chunkSize + 1
-          this.upload(nextChunkIndex, nextChunkOffset)
+          if (this.totalChunks == 1 || this.totalChunks < 1) {
+            this.uploading = false
+            this.afterComplete()
+          }
+          else {
+            let nextChunkIndex = 1
+            let nextChunkOffset = this.chunkSize + 1
+            this.upload(nextChunkIndex, nextChunkOffset)
+          }
         }
       }
       // this case is hit recursively from the first call
@@ -133,7 +138,6 @@ export default {
           }
           else {
             this.uploading = false
-            console.log("Upload Complete")
             this.afterComplete()
           }
         }
