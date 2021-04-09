@@ -6,7 +6,7 @@
 **/.zip
 **/tmp
 **/out-tsc
-**/.chalice
+**/.chalice/deployments
 
 # dependencies
 **/node_modules

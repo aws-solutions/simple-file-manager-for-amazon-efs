@@ -146,8 +146,8 @@ Resources:
         IdentityPoolId: !GetAtt EFSFileAuthentication.Outputs.IdentityPoolId
         PoolClientId: !GetAtt EFSFileAuthentication.Outputs.UserPoolClientId
 
-  Outputs:
-    EFSFileSimpleWebsiteUrl:
-       Value: !GetAtt EFSFileWebApplication.Outputs.EFSFileSimpleWebsiteUrl
+Outputs:
+  EFSFileSimpleWebsiteUrl:
+    Value: !GetAtt EFSFileWebApplication.Outputs.EFSFileSimpleWebsiteUrl
 
 
