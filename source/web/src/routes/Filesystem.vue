@@ -18,7 +18,7 @@
                         Create directory
                     <b-icon icon="folder-plus" aria-hidden="true"></b-icon>
                     </b-button>
-                    <b-modal id="dir-modal">
+                    <b-modal hide-footer id="dir-modal">
                         <makedir @dirCreated=refresh v-bind:nav="navObjects"/>
                     </b-modal>
                 </b-col>
@@ -42,8 +42,8 @@
                         Upload file
                         <b-icon icon="box-arrow-up" aria-hidden="true"></b-icon>
                     </b-button>
-                    <b-modal id="upload-modal">
-                        <upload @uploadCompleted=refresh v-bind:nav="navObjects"/>
+                    <b-modal ref="upload" v-bind:no-close-on-backdrop="active" hide-header hide-footer id="upload-modal">
+                        <upload @uploadStarted=operationStart @uploadCompleted=refresh v-bind:nav="navObjects"/>
                     </b-modal>
                 </b-col>
             </b-row>
@@ -74,8 +74,8 @@
                 </b-row>
             </template>
             </b-table>
-            <b-modal id="download-modal">
-                <download :nav="navObjects" :filename="filename"/>
+            <b-modal ref="download" v-bind:no-close-on-backdrop="active" hide-header hide-footer id="download-modal">
+                <download @downloadStarted=operationStart @downloadCompleted=refresh :nav="navObjects" :filename="filename"/>
             </b-modal>
         </b-card>
     </b-col>
@@ -99,6 +99,7 @@ export default {
   },
   data () {
     return {
+        active: false,
         editEnabled: false,
         filename: null,
         files: [],
@@ -116,10 +117,16 @@ export default {
       this.retrieveObjects()
   },
   methods: {
+      operationStart () {
+          this.active = true
+      },
       refresh () {
           this.dirs = []
           this.files = []
           this.retrieveObjects()
+          this.$refs['download'].hide()
+          this.$refs['upload'].hide()
+          this.active = false
       },
       navigateBack () {
           if (this.navObjects.length > 1) {

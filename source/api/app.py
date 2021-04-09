@@ -33,22 +33,6 @@ iam = boto3.client('iam')
 
 # Helper functions
 
-# def parse_multipart_object(headers, content):
-#     for header in headers.split(';'):
-#         # Only get the specific dropzone form values we need
-#         if header == 'form-data':
-#             continue
-#         elif 'filename' in header:
-#             filename_object = {"filename": header.split('"')[1::2][0], "content": content}
-#             return filename_object
-#         elif 'name="file"' in header:
-#             continue
-#         else:
-#             header_name = header.split('"')[1::2][0]
-#             metadata_object = {header_name: content}
-#             return metadata_object
-
-
 def proxy_operation_to_efs_lambda(filesystem_id, event):
     lambda_name = '{filesystem}-manager-lambda'.format(filesystem=filesystem_id)
     try:
@@ -101,7 +85,7 @@ def delete_access_point(access_point_arn):
 def format_filesystem_response(filesystem):
     filesystem_id = filesystem['FileSystemId']
 
-    is_managed = has_manager_lambda(filesystem_id)
+    is_managed = has_active_manager_lambda(filesystem_id)
 
     lifecycle_state = filesystem['LifeCycleState']
     # TODO: BUG - Serialize datetime object to json properly
@@ -188,7 +172,7 @@ def create_function(filesystem_id, access_point_arn, vpc):
     code = create_function_zip()
     role = create_function_role(filesystem_id)
     # TODO: Add retry logic instead of relying on sleep
-    time.sleep(10)
+    time.sleep(15)
     try:
         response = serverless.create_function(
             FunctionName='{filesystem}-manager-lambda'.format(filesystem=filesystem_id),
@@ -228,9 +212,9 @@ def create_function(filesystem_id, access_point_arn, vpc):
         return response
 
 
-def has_manager_lambda(filesystem_id):
+def has_active_manager_lambda(filesystem_id):
     try:
-        serverless.get_function(
+        response = serverless.get_function(
             FunctionName='{filesystem}-manager-lambda'.format(filesystem=filesystem_id)
         )
     except botocore.exceptions.ClientError as error:
@@ -240,7 +224,11 @@ def has_manager_lambda(filesystem_id):
             app.log.error(error)
             return False
     else:
-        return True
+        function_state = response['Configuration']['State']
+        if function_state == 'Active':
+            return True
+        else:
+            return False
 
 
 # Routes
