@@ -83,6 +83,7 @@ export default {
       this.currentChunk = chunkIndex
       // first if block is for the first call to upload, e.g. when the button is clicked
       if (chunkIndex == 0 && chunkOffset == 0) {
+        this.$emit('uploadStarted')
         let fileSize = this.fileToUpload.size
         this.totalChunks = Math.ceil(fileSize / this.chunkSize)
         let chunk = this.fileToUpload.slice(0, this.chunkSize + 1)

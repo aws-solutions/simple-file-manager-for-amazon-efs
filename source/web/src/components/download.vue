@@ -42,7 +42,7 @@ export default {
       },
     async downloadFile () {
           if (this.dzchunkindex == null && this.dzchunkbyteoffset == null) {
-
+              this.$emit("downloadStarted")
               let requestParams = { 
                   queryStringParameters: {
                     "path": this.path,
@@ -98,7 +98,7 @@ export default {
                   
                   link.click()
 
-                  console.log('Done')
+                  this.$emit("downloadCompleted")
               }
               else {
                   let chunkData = chunk.chunk_data

@@ -2,6 +2,11 @@
   <div>
     <b-container class="bv-example-row bv-example-row-flex-cols">
         <h1>Filesystem: {{ $route.params.id }}</h1>
+        
+        <div v-if="processing">
+            <b-spinner/>
+        </div>
+        <div v-else>
         <b-row>
             <b-col>
                 <br>
@@ -27,6 +32,7 @@
             <b-col>
             </b-col>
         </b-row>
+        </div>
     </b-container>
   </div>
 </template>
@@ -38,6 +44,7 @@ export default {
   name: 'Configure',
   data () {
     return {
+        processing: false,
         netinfo: null,
         form: {
             mountTarget: null
@@ -88,12 +95,16 @@ export default {
               headers: {"Content-Type": "application/json"}
          }
           try {
+              this.processing = true
               let response = await API.post('fileManagerApi', '/api/filesystems/' + this.$route.params.id + '/lambda', params)
               console.log(response)
+              this.processing = false
+              this.$router.push({ name: "home" })
           }
           catch (error) {
               alert('Unable to create filesystem lambda, check api logs')
               console.log(error)
+              this.processing = false
           }
       }
   }
