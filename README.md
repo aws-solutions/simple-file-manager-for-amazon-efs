@@ -13,8 +13,8 @@ You can deploy the open source solution by clicking a one-click deployment link 
 
 Region| Launch
 ------|-----
-US East (N. Virginia) | [![Launch in us-east-1](docs/assets/images/launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?stackName=sfm&templateURL=https://rodeolabz-us-east-1.s3.amazonaws.com/)
-US West (Oregon) | [![Launch in us-west-2](docs/assets/images/launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/new?stackName=sfm&templateURL=https://rodeolabz-us-west-2.s3.us-west-2.amazonaws.com/)
+US East (N. Virginia) | [![Launch in us-east-1](docs/assets/images/launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?stackName=sfm&templateURL=https://rodeolabz-us-east-1.s3.amazonaws.com/efs_file_manager/v1.0.0-beta/efs-file-manager.template)
+US West (Oregon) | [![Launch in us-west-2](docs/assets/images/launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/new?stackName=sfm&templateURL=https://rodeolabz-us-west-2.s3.us-west-2.amazonaws.com/efs_file_manager/v1.0.0-beta/efs-file-manager.template)
 
 
 # Getting Started
@@ -29,7 +29,7 @@ US West (Oregon) | [![Launch in us-west-2](docs/assets/images/launch-stack.png)]
 
 5. Use the inital credentials to sign in. You will be required to create a new password. 
 6. Upon successful authentication, the application will route you to the home page, where you will see all the EFS Filesystems in your account.
-7. To grant Simple File Manager access to a file system, click the link labeled "false". This will take you to the file manager lmabda creation page.
+7. To grant Simple File Manager access to a file system, click the link labeled "false". This will take you to the file manager lambda creation page.
 8. From the dropdown, select a mount target to connect the file manager lambda to. You can reference the network information for more details.
 9. Click submit and wait for the application to complete the request.
 10. After completion, you will be routed back to the home page.
