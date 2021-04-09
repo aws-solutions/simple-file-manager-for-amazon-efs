@@ -14,7 +14,7 @@ Parameters:
 Mappings:
   EFSFileSimpleApp:
     SourceCode:
-      S3Bucket: "%%REGIONAL_BUCKET_NAME%%-us-east-1"
+      S3Bucket: "%%REGIONAL_BUCKET_NAME%%"
       CodeKeyPrefix: "efs_file_manager/%%VERSION%%"
       TemplateKeyPrefix: "efs_file_manager/%%VERSION%%"
       WebsitePrefix: "efs_file_manager/%%VERSION%%/web"
@@ -117,7 +117,8 @@ Resources:
     Type: Custom::WebsiteDeployHelper
     Properties:
       ServiceToken: !GetAtt WebsiteDeployHelper.Arn
-      WebsiteCodeBucket: !FindInMap ["EFSFileSimpleApp", "SourceCode", "S3Bucket"]
+      WebsiteCodeBucket: 
+        !Join ["-", [!FindInMap ["EFSFileSimpleApp", "SourceCode", "S3Bucket"], Ref: "AWS::Region"]]
       WebsiteCodePrefix: !FindInMap ["EFSFileSimpleApp", "SourceCode", "WebsitePrefix"]
       DeploymentBucket: !GetAtt EFSFileSimpleWebsiteBucket.DomainName
 
@@ -223,7 +224,7 @@ Resources:
                   - !Sub ${EFSFileSimpleWebsiteBucket.Arn}/*
                   - Fn::Sub:
                       - arn:aws:s3:::${websitecode}/*
-                      - websitecode: !FindInMap ["EFSFileSimpleApp", "SourceCode", "S3Bucket"]
+                      - websitecode: !Join ["-", [!FindInMap ["EFSFileSimpleApp", "SourceCode", "S3Bucket"], Ref: "AWS::Region"]]
               - Effect: Allow
                 Action:
                   - "s3:ListBucket"
@@ -231,7 +232,7 @@ Resources:
                   - !Sub ${EFSFileSimpleWebsiteBucket.Arn}
                   - Fn::Sub:
                       - arn:aws:s3:::${websitecode}
-                      - websitecode: !FindInMap ["EFSFileSimpleApp", "SourceCode", "S3Bucket"]
+                      - websitecode: !Join ["-", [!FindInMap ["EFSFileSimpleApp", "SourceCode", "S3Bucket"], Ref: "AWS::Region"]]
               - Effect: Allow
                 Action:
                   - "logs:CreateLogGroup"
@@ -244,7 +245,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       Code:
-        S3Bucket: !FindInMap ["EFSFileSimpleApp", "SourceCode", "S3Bucket"]
+        S3Bucket: !Join ["-", [!FindInMap ["EFSFileSimpleApp", "SourceCode", "S3Bucket"], Ref: "AWS::Region"]]
         S3Key:
           !Join [
             "/",
