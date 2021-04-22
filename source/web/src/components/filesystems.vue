@@ -2,7 +2,7 @@
 <div>
     <b-table striped hover :items="filesystems">
         <template v-slot:cell(file_system_id)="data">
-            <div v-if=data.item.managed>
+            <div v-if="data.item.managed === true">
                 <a :href="`/filesystem/${data.value}`">{{ data.value }}</a>
             </div>
             <div v-else>
@@ -11,6 +11,9 @@
         </template>
         <template v-slot:cell(managed)="data">
             <div v-if=data.value>
+                <p>{{data.value}}</p>
+            </div>
+            <div v-else-if="data.value === 'Creating'">
                 <p>{{data.value}}</p>
             </div>
             <div v-else>
