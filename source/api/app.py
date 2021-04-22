@@ -84,7 +84,7 @@ def delete_access_point(access_point_arn):
 
 def format_filesystem_response(filesystem):
     filesystem_id = filesystem['FileSystemId']
-
+    name = filesystem["Name"]
     is_managed = has_active_manager_lambda(filesystem_id)
 
     lifecycle_state = filesystem['LifeCycleState']
@@ -102,6 +102,7 @@ def format_filesystem_response(filesystem):
     else:
         new_filesystem_object["managed"] = False
 
+    new_filesystem_object["name"] = name
     new_filesystem_object["file_system_id"] = filesystem_id
     new_filesystem_object["lifecycle_state"] = lifecycle_state
     #new_filesystem_object["size_in_bytes"] = size_in_bytes
