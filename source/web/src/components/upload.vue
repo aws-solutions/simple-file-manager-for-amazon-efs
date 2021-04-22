@@ -75,7 +75,7 @@ export default {
           },
           body: chunkData
       };
-      let response = await API.post('fileManagerApi', '/api/upload/' + this.$route.params.id, requestParams)
+      let response = await API.post('fileManagerApi', '/api/objects/' + this.$route.params.id + '/upload', requestParams)
       return response
     },
     // this whole function needs to be cleaned up, notably reduce duplicate code by breaking out into functions - works well for now though
