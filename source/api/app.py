@@ -333,8 +333,8 @@ def create_filesystem_lambda(filesystem_id):
     else:
         return response
 
-# TODO: Change this url path to /objects/$fsid/upload
-@app.route('/upload/{filesystem_id}', methods=["POST"], cors=True, authorizer=authorizer)
+
+@app.route('/objects/{filesystem_id}/upload', methods=["POST"], cors=True, authorizer=authorizer)
 def upload(filesystem_id):
     print(app.current_request.query_params)
     try:
@@ -365,7 +365,7 @@ def upload(filesystem_id):
         raise ChaliceViewError('Error uploading file: {payload}'.format(payload=payload))
 
 
-@app.route('/download/{filesystem_id}', methods=["GET"], cors=True, authorizer=authorizer)
+@app.route('/objects/{filesystem_id}/download', methods=["GET"], cors=True, authorizer=authorizer)
 def download(filesystem_id):
     print(app.current_request.query_params)
     try:
