@@ -85,7 +85,7 @@ def delete_access_point(access_point_arn):
 def format_filesystem_response(filesystem):
     filesystem_id = filesystem['FileSystemId']
     name = filesystem["Name"]
-    is_managed = has_active_manager_lambda(filesystem_id)
+    is_managed = has_manager_lambda(filesystem_id)
 
     lifecycle_state = filesystem['LifeCycleState']
     # TODO: BUG - Serialize datetime object to json properly
@@ -97,8 +97,11 @@ def format_filesystem_response(filesystem):
 
     new_filesystem_object = dict()
 
-    if is_managed is True:
-        new_filesystem_object["managed"] = True
+    if is_managed["Status"] is True:
+        if is_managed["Message"] == "Active":
+            new_filesystem_object["managed"] = True
+        else:
+            new_filesystem_object["managed"] = "Creating"
     else:
         new_filesystem_object["managed"] = False
 
@@ -213,23 +216,27 @@ def create_function(filesystem_id, access_point_arn, vpc):
         return response
 
 
-def has_active_manager_lambda(filesystem_id):
+def has_manager_lambda(filesystem_id):
     try:
         response = serverless.get_function(
             FunctionName='{filesystem}-manager-lambda'.format(filesystem=filesystem_id)
         )
     except botocore.exceptions.ClientError as error:
         if error.response['Error']['Code'] == 'ResourceNotFoundException':
-            return False
+            return {"Status": False}
         else:
             app.log.error(error)
-            return False
+            return {"Status": False}
     else:
         function_state = response['Configuration']['State']
         if function_state == 'Active':
-            return True
+            return {"Status": True, "Message": "Active"}
+
+        elif function_state == 'Pending':
+            return {"Status": True, "Message": "Creating"}
+
         else:
-            return False
+            return {"Status": False}
 
 
 # Routes
