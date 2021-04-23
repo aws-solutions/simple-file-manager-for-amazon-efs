@@ -310,17 +310,15 @@ def create_filesystem_lambda(filesystem_id):
     request = app.current_request
     json_body = request.json_body
 
-    try:
-        subnet_id = json_body['subnetId']
+   try:
+        subnet_ids = json_body['subnetIds']
         security_groups = json_body['securityGroups']
     except KeyError as error:
         app.log.error(error)
         raise BadRequestError("Check API logs")
     else:
         vpc_config = {
-            'SubnetIds': [
-                subnet_id,
-            ],
+            'SubnetIds': subnet_ids,
             'SecurityGroupIds': security_groups
         }
 

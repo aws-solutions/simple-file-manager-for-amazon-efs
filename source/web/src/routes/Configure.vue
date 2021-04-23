@@ -65,8 +65,18 @@ export default {
       onSubmit(evt) {
         evt.preventDefault()
         let mountTarget = this.selected
-        let mountTargetNetinfo = this.netinfo[mountTarget]
+        let mountTargetNetinfo = {};
+        mountTargetNetinfo["security_groups"] = this.netinfo[mountTarget].security_groups
+        mountTargetNetinfo["subnet_ids"] = this.subnetIds(this.netinfo)
         this.createManagerLambda(mountTargetNetinfo)
+      },
+      subnetIds (netinfo) {
+            let listMountTargets = Object.keys(netinfo);
+            let subnetIds = [];
+            for (var i=0; i<listMountTargets.length; i++){
+                subnetIds.push(netinfo[listMountTargets[i]]["subnet_id"])
+            }
+            return subnetIds
       },
       formatNetinfo (netinfo) {
           let tmpNetinfo = {}
@@ -91,7 +101,7 @@ export default {
       },
       async createManagerLambda (netinfo) {
           const params = {
-              body: {"subnetId": netinfo.subnet_id, "securityGroups": netinfo.security_groups},
+              body: {"subnetIds": netinfo.subnet_ids, "securityGroups": netinfo.security_groups},
               headers: {"Content-Type": "application/json"}
          }
           try {
