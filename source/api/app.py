@@ -2,33 +2,34 @@ import boto3
 import base64
 import botocore
 import os
-import yaml
 import json
 import logging
 import time
-from requests_toolbelt import MultipartDecoder
 import zipfile
+from botocore.config import Config
 from chalice import Chalice, Response, ChaliceViewError, BadRequestError, UnauthorizedError, ForbiddenError, NotFoundError, ConflictError, TooManyRequestsError, IAMAuthorizer
 
 
 # Misc global variables
-
 
 app = Chalice(app_name='api')
 app.log.setLevel(logging.DEBUG)
 efs_lambda = os.path.join(
     os.path.dirname(__file__), 'chalicelib', 'efs_lambda.py')
 
+sfm_config = json.loads(os.environ['botoConfig'])
+config = Config(**sfm_config)
+
 # Cognito resources
 # From cloudformation stack
-authorizer = IAMAuthorizer()
 
+authorizer = IAMAuthorizer()
 
 # AWS Clients
 
-efs = boto3.client('efs')
-serverless = boto3.client('lambda')
-iam = boto3.client('iam')
+efs = boto3.client('efs', config=config)
+serverless = boto3.client('lambda', config=config)
+iam = boto3.client('iam', config=config)
 
 
 # Helper functions
@@ -139,7 +140,6 @@ def create_function_role(filesystem_name):
         ]
     }
 
-    # TODO: Prepend this role name with the stack name
     role_name = f'{filesystem_name}-manager-role'
     path = '/'
     description = f'IAM Role for filesystem {filesystem_name} manager lambda'
@@ -172,7 +172,6 @@ def create_function_role(filesystem_name):
 
 
 def create_function(filesystem_id, access_point_arn, vpc):
-    # TODO: Add lambda resource policy to prevent this function from being invoked by anything other than this API handler
     code = create_function_zip()
     role = create_function_role(filesystem_id)
     # TODO: Add retry logic instead of relying on sleep
@@ -254,7 +253,6 @@ def list_filesystems():
         raise ChaliceViewError("Check API logs")
     else:
         filesystems = response['FileSystems']
-        #app.log.debug(filesystems)
         formatted_filesystems = []
         for filesystem in filesystems:
             formatted = format_filesystem_response(filesystem)
