@@ -21,6 +21,12 @@
             </div>
         </template>
     </b-table>
+        <div v-if="noFileSystemsFound">
+            <p>No Amazon EFS file systems found. 
+                Please create an EFS filesystem in the 
+                <a href="https://console.aws.amazon.com/efs/home/file-systems">AWS console</a>
+            </p>
+        </div>
 </div>
 </template>
 
@@ -31,7 +37,8 @@ export default {
   name: 'filesystems',
   data() {
       return {
-          filesystems: []
+          filesystems: [], 
+          noFileSystemsFound: false
       }
   },
   mounted: function () {
@@ -41,7 +48,11 @@ export default {
       async listFilesystems() {
           try {
               let response = await API.get('fileManagerApi', '/api/filesystems/')
-              this.filesystems = response
+              if(response.length == 0){
+                  this.noFileSystemsFound = true
+              }else{
+                  this.filesystems = response
+              }
           }
           catch (error) {
               alert('Unable to list filesystems, check api logs')
