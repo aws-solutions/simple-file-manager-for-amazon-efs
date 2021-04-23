@@ -3,7 +3,7 @@
     <b-container fluid>
         <b-row align-h="center">
             <b-col md="auto">
-                <amplify-authenticator></amplify-authenticator>
+                <amplify-authenticator :authConfig="{ signInConfig: { isSignUpDisplayed: false } }" />
             </b-col>
         </b-row>
     </b-container>

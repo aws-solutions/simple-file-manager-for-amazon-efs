@@ -1,6 +1,9 @@
 {
   "version": "2.0",
   "app_name": "api",
+  "environment_variables": {
+    "botoConfig": "{}"
+  },
   "stages": {
     "dev": {
       "manage_iam_role": false,

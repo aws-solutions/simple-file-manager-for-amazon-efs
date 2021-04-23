@@ -37,7 +37,7 @@ export default {
   },
   methods: {
     async downloadChunk (requestParams) {
-          let response = await API.get('fileManagerApi', '/api/download/' + this.$route.params.id, requestParams)
+          let response = await API.get('fileManagerApi', '/api/objects/' + this.$route.params.id + '/download', requestParams)
           return response
       },
     async downloadFile () {
