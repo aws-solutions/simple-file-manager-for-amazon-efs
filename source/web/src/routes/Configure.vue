@@ -8,22 +8,34 @@
         </div>
         <div v-else>
         <b-row>
-            <b-col>
-                <br>
-                <br>
-                <br>
-                <br>
-                <h3> Mount Target Network Information</h3>
-                <p>{{netinfo}}</p>
-            </b-col>
             <b-col align-self="center">
                 <b-form @submit="onSubmit">
                         <h3> Create file manager lambda</h3>
-                        <p> Select a mount point to attach to:</p>
-                        <b-form-select v-model="selected" :options="options"></b-form-select>
-                        <br>
-                        <br>
-                        <b-button type="submit">
+                        <b-form-group
+                            label="User ID:"
+                            description="The numeric POSIX user ID that lambda will use to make file system requests as"
+                        >
+                            <b-form-input v-model="uid" :state="valid" placeholder="Enter a custom UID or leave default (1000)"></b-form-input>
+                        </b-form-group>
+
+                        <b-form-group
+                            label="Group ID:"
+                            description="The numeric POSIX group ID that lambda will use to make file system requests as"
+                        >
+                            <b-form-input v-model="gid" :state="valid" placeholder="Enter a custom GID or leave default (1000)"></b-form-input>
+                        </b-form-group>
+
+                        <b-form-group
+                            label="Path:"
+                            description="The file system directory that lambda will use as the root directory"
+                        >
+                            <b-form-input v-model="path" :state="valid" placeholder="Enter a custom path or leave default (/efs)"></b-form-input>
+                        </b-form-group>
+                        
+                        <b-form-invalid-feedback :state="valid">
+                            UID, GID, and Path must not be empty. The path must begin with a forward slash: /
+                        </b-form-invalid-feedback>
+                        <b-button :disabled='!valid' type="submit">
                             Submit
                         <b-icon icon="Hammer" aria-hidden="true"></b-icon>
                 </b-button>
@@ -45,54 +57,59 @@ export default {
   data () {
     return {
         processing: false,
-        netinfo: null,
-        form: {
-            mountTarget: null
-        },
-        selected: null
+        uid: '1000',
+        gid: '1000',
+        path: '/efs'
     }
   },
-  created: function () {
-      this.getFilesystemNetinfo()
-  },
   computed: {
-      options: function () {
-          let mountTargetNames = Object.keys(this.netinfo)
-          return mountTargetNames
+      valid() {
+          return this.uid != "" && this.gid != "" && this.path != "" && this.path.charAt(0) == '/'
       }
   },
   methods: {
-      onSubmit(evt) {
-        evt.preventDefault()
-        let mountTarget = this.selected
-        let mountTargetNetinfo = {};
-        mountTargetNetinfo["security_groups"] = this.netinfo[mountTarget].security_groups
-        mountTargetNetinfo["subnet_ids"] = this.subnetIds(this.netinfo)
-        this.createManagerLambda(mountTargetNetinfo)
-      },
-      subnetIds (netinfo) {
-            let listMountTargets = Object.keys(netinfo);
-            let subnetIds = [];
-            for (var i=0; i<listMountTargets.length; i++){
-                subnetIds.push(netinfo[listMountTargets[i]]["subnet_id"])
-            }
-            return subnetIds
+      async onSubmit(evt) {
+        evt.preventDefault();
+
+        if (this.valid) {
+            let mountTargetNetinfo = await this.getFilesystemNetinfo()
+        
+            mountTargetNetinfo['uid'] = this.uid
+            mountTargetNetinfo['gid'] = this.gid
+            mountTargetNetinfo['path'] = this.path
+
+            console.log(mountTargetNetinfo)
+
+            this.createManagerLambda(mountTargetNetinfo)
+        }
+        else {
+            alert("Form Validation Error. Check the form input and try again.")
+        }
       },
       formatNetinfo (netinfo) {
-          let tmpNetinfo = {}
+          let subnets = []
+          let securityGroups = []
+        
           for (var i=0, n=netinfo.length; i < n; ++i ) {
-              let netinfoKeys = Object.keys(netinfo[i])
-              let mountTargetName = netinfoKeys[0]
-              tmpNetinfo[mountTargetName] = netinfo[i][mountTargetName]
-              
+              if (i === 5) { break; }
+              let mountTarget = Object.keys(netinfo[i])[0]
+
+              let subnet = netinfo[i][mountTarget]['subnet_id']
+              let securityGroup = netinfo[i][mountTarget]['security_groups']
+
+              subnets.push(subnet)
+              securityGroups.push.apply(securityGroups, securityGroup)
           }
+          
+          let tmpNetinfo = {'subnetIds': subnets, 'securityGroups': securityGroups}
+          
           return tmpNetinfo
       },
       async getFilesystemNetinfo () {
           try {
               let response = await API.get('fileManagerApi', '/api/filesystems/' + this.$route.params.id + '/netinfo')
               let formattedNetinfo = this.formatNetinfo(response)
-              this.netinfo = formattedNetinfo
+              return formattedNetinfo
           }
           catch (error) {
               alert('Unable to retrieve filesystem netinfo, check api logs')
@@ -101,7 +118,7 @@ export default {
       },
       async createManagerLambda (netinfo) {
           const params = {
-              body: {"subnetIds": netinfo.subnet_ids, "securityGroups": netinfo.security_groups},
+              body: {"subnetIds": netinfo.subnetIds, "securityGroups": netinfo.securityGroups, "uid": netinfo.uid, "gid": netinfo.gid, "path": netinfo.path},
               headers: {"Content-Type": "application/json"}
          }
           try {

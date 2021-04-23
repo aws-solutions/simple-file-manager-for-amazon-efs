@@ -48,19 +48,19 @@ def proxy_operation_to_efs_lambda(filesystem_id, event):
         return response
 
 
-def create_filesystem_access_point(filesystem_id):
+def create_filesystem_access_point(filesystem_id, uid, gid, path):
     try:
         response = efs.create_access_point(
         FileSystemId=filesystem_id,
         PosixUser={
-            'Uid': 1000,
-            'Gid': 1000
+            'Uid': uid,
+            'Gid': gid
         },
         RootDirectory={
-            'Path': '/efs',
+            'Path': path,
             'CreationInfo': {
-                'OwnerUid': 1000,
-                'OwnerGid': 1000,
+                'OwnerUid': uid,
+                'OwnerGid': gid,
                 'Permissions': '777'
             }
         }
@@ -310,9 +310,12 @@ def create_filesystem_lambda(filesystem_id):
     request = app.current_request
     json_body = request.json_body
 
-   try:
+    try:
         subnet_ids = json_body['subnetIds']
         security_groups = json_body['securityGroups']
+        uid = int(json_body['uid'])
+        gid = int(json_body['gid'])
+        path = json_body['path']
     except KeyError as error:
         app.log.error(error)
         raise BadRequestError("Check API logs")
@@ -323,7 +326,7 @@ def create_filesystem_lambda(filesystem_id):
         }
 
     try:
-        access_point_arn = create_filesystem_access_point(filesystem_id)
+        access_point_arn = create_filesystem_access_point(filesystem_id, uid, gid, path)
     except Exception as error:
         app.log.error(error)
         raise ChaliceViewError('Check API Logs')
