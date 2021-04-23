@@ -84,8 +84,8 @@ def delete_access_point(access_point_arn):
 
 def format_filesystem_response(filesystem):
     filesystem_id = filesystem['FileSystemId']
-
-    is_managed = has_active_manager_lambda(filesystem_id)
+    name = filesystem["Name"]
+    is_managed = has_manager_lambda(filesystem_id)
 
     lifecycle_state = filesystem['LifeCycleState']
     # TODO: BUG - Serialize datetime object to json properly
@@ -97,11 +97,15 @@ def format_filesystem_response(filesystem):
 
     new_filesystem_object = dict()
 
-    if is_managed is True:
-        new_filesystem_object["managed"] = True
+    if is_managed["Status"] is True:
+        if is_managed["Message"] == "Active":
+            new_filesystem_object["managed"] = True
+        else:
+            new_filesystem_object["managed"] = "Creating"
     else:
         new_filesystem_object["managed"] = False
 
+    new_filesystem_object["name"] = name
     new_filesystem_object["file_system_id"] = filesystem_id
     new_filesystem_object["lifecycle_state"] = lifecycle_state
     #new_filesystem_object["size_in_bytes"] = size_in_bytes
@@ -212,23 +216,27 @@ def create_function(filesystem_id, access_point_arn, vpc):
         return response
 
 
-def has_active_manager_lambda(filesystem_id):
+def has_manager_lambda(filesystem_id):
     try:
         response = serverless.get_function(
             FunctionName='{filesystem}-manager-lambda'.format(filesystem=filesystem_id)
         )
     except botocore.exceptions.ClientError as error:
         if error.response['Error']['Code'] == 'ResourceNotFoundException':
-            return False
+            return {"Status": False}
         else:
             app.log.error(error)
-            return False
+            return {"Status": False}
     else:
         function_state = response['Configuration']['State']
         if function_state == 'Active':
-            return True
+            return {"Status": True, "Message": "Active"}
+
+        elif function_state == 'Pending':
+            return {"Status": True, "Message": "Creating"}
+
         else:
-            return False
+            return {"Status": False}
 
 
 # Routes
@@ -333,8 +341,8 @@ def create_filesystem_lambda(filesystem_id):
     else:
         return response
 
-# TODO: Change this url path to /objects/$fsid/upload
-@app.route('/upload/{filesystem_id}', methods=["POST"], cors=True, authorizer=authorizer)
+
+@app.route('/objects/{filesystem_id}/upload', methods=["POST"], cors=True, authorizer=authorizer)
 def upload(filesystem_id):
     print(app.current_request.query_params)
     try:
@@ -365,7 +373,7 @@ def upload(filesystem_id):
         raise ChaliceViewError('Error uploading file: {payload}'.format(payload=payload))
 
 
-@app.route('/download/{filesystem_id}', methods=["GET"], cors=True, authorizer=authorizer)
+@app.route('/objects/{filesystem_id}/download', methods=["GET"], cors=True, authorizer=authorizer)
 def download(filesystem_id):
     print(app.current_request.query_params)
     try:
