@@ -10,11 +10,11 @@
             </div>
         </template>
         <template v-slot:cell(managed)="data">
-            <div v-if=data.value>
+            <div v-if="data.value === true">
                 <p>{{data.value}}</p>
             </div>
             <div v-else-if="data.value === 'Creating'">
-                <p>{{data.value}}</p>
+                <b-link href="/" v-b-tooltip.hover title="Lambda creation can take several minutes. Click to refresh.">{{data.value}}</b-link>
             </div>
             <div v-else>
                 <a :href="`/configure/${data.item.file_system_id}`">{{ data.value }}</a>
