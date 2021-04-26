@@ -2,7 +2,7 @@
 <div>
     <b-table striped hover :items="filesystems">
         <template v-slot:cell(file_system_id)="data">
-            <div v-if=data.item.managed>
+            <div v-if="data.item.managed === true">
                 <a :href="`/filesystem/${data.value}`">{{ data.value }}</a>
             </div>
             <div v-else>
@@ -10,14 +10,23 @@
             </div>
         </template>
         <template v-slot:cell(managed)="data">
-            <div v-if=data.value>
+            <div v-if="data.value === true">
                 <p>{{data.value}}</p>
+            </div>
+            <div v-else-if="data.value === 'Creating'">
+                <b-link href="/" v-b-tooltip.hover title="Lambda creation can take several minutes. Click to refresh.">{{data.value}}</b-link>
             </div>
             <div v-else>
                 <a :href="`/configure/${data.item.file_system_id}`">{{ data.value }}</a>
             </div>
         </template>
     </b-table>
+        <div v-if="noFileSystemsFound">
+            <p>No Amazon EFS file systems found. 
+                Please create an EFS filesystem in the 
+                <a href="https://console.aws.amazon.com/efs/home/file-systems">AWS console</a>
+            </p>
+        </div>
 </div>
 </template>
 
@@ -28,7 +37,8 @@ export default {
   name: 'filesystems',
   data() {
       return {
-          filesystems: []
+          filesystems: [], 
+          noFileSystemsFound: false
       }
   },
   mounted: function () {
@@ -38,7 +48,11 @@ export default {
       async listFilesystems() {
           try {
               let response = await API.get('fileManagerApi', '/api/filesystems/')
-              this.filesystems = response
+              if(response.length == 0){
+                  this.noFileSystemsFound = true
+              }else{
+                  this.filesystems = response
+              }
           }
           catch (error) {
               alert('Unable to list filesystems, check api logs')

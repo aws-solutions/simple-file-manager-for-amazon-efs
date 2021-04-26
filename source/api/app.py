@@ -2,33 +2,34 @@ import boto3
 import base64
 import botocore
 import os
-import yaml
 import json
 import logging
 import time
-from requests_toolbelt import MultipartDecoder
 import zipfile
+from botocore.config import Config
 from chalice import Chalice, Response, ChaliceViewError, BadRequestError, UnauthorizedError, ForbiddenError, NotFoundError, ConflictError, TooManyRequestsError, IAMAuthorizer
 
 
 # Misc global variables
-
 
 app = Chalice(app_name='api')
 app.log.setLevel(logging.DEBUG)
 efs_lambda = os.path.join(
     os.path.dirname(__file__), 'chalicelib', 'efs_lambda.py')
 
+sfm_config = json.loads(os.environ['botoConfig'])
+config = Config(**sfm_config)
+
 # Cognito resources
 # From cloudformation stack
-authorizer = IAMAuthorizer()
 
+authorizer = IAMAuthorizer()
 
 # AWS Clients
 
-efs = boto3.client('efs')
-serverless = boto3.client('lambda')
-iam = boto3.client('iam')
+efs = boto3.client('efs', config=config)
+serverless = boto3.client('lambda', config=config)
+iam = boto3.client('iam', config=config)
 
 
 # Helper functions
@@ -48,19 +49,19 @@ def proxy_operation_to_efs_lambda(filesystem_id, event):
         return response
 
 
-def create_filesystem_access_point(filesystem_id):
+def create_filesystem_access_point(filesystem_id, uid, gid, path):
     try:
         response = efs.create_access_point(
         FileSystemId=filesystem_id,
         PosixUser={
-            'Uid': 1000,
-            'Gid': 1000
+            'Uid': uid,
+            'Gid': gid
         },
         RootDirectory={
-            'Path': '/efs',
+            'Path': path,
             'CreationInfo': {
-                'OwnerUid': 1000,
-                'OwnerGid': 1000,
+                'OwnerUid': uid,
+                'OwnerGid': gid,
                 'Permissions': '777'
             }
         }
@@ -84,8 +85,8 @@ def delete_access_point(access_point_arn):
 
 def format_filesystem_response(filesystem):
     filesystem_id = filesystem['FileSystemId']
-
-    is_managed = has_active_manager_lambda(filesystem_id)
+    name = filesystem["Name"]
+    is_managed = has_manager_lambda(filesystem_id)
 
     lifecycle_state = filesystem['LifeCycleState']
     # TODO: BUG - Serialize datetime object to json properly
@@ -97,11 +98,15 @@ def format_filesystem_response(filesystem):
 
     new_filesystem_object = dict()
 
-    if is_managed is True:
-        new_filesystem_object["managed"] = True
+    if is_managed["Status"] is True:
+        if is_managed["Message"] == "Active":
+            new_filesystem_object["managed"] = True
+        else:
+            new_filesystem_object["managed"] = "Creating"
     else:
         new_filesystem_object["managed"] = False
 
+    new_filesystem_object["name"] = name
     new_filesystem_object["file_system_id"] = filesystem_id
     new_filesystem_object["lifecycle_state"] = lifecycle_state
     #new_filesystem_object["size_in_bytes"] = size_in_bytes
@@ -135,7 +140,6 @@ def create_function_role(filesystem_name):
         ]
     }
 
-    # TODO: Prepend this role name with the stack name
     role_name = f'{filesystem_name}-manager-role'
     path = '/'
     description = f'IAM Role for filesystem {filesystem_name} manager lambda'
@@ -168,7 +172,6 @@ def create_function_role(filesystem_name):
 
 
 def create_function(filesystem_id, access_point_arn, vpc):
-    # TODO: Add lambda resource policy to prevent this function from being invoked by anything other than this API handler
     code = create_function_zip()
     role = create_function_role(filesystem_id)
     # TODO: Add retry logic instead of relying on sleep
@@ -212,23 +215,27 @@ def create_function(filesystem_id, access_point_arn, vpc):
         return response
 
 
-def has_active_manager_lambda(filesystem_id):
+def has_manager_lambda(filesystem_id):
     try:
         response = serverless.get_function(
             FunctionName='{filesystem}-manager-lambda'.format(filesystem=filesystem_id)
         )
     except botocore.exceptions.ClientError as error:
         if error.response['Error']['Code'] == 'ResourceNotFoundException':
-            return False
+            return {"Status": False}
         else:
             app.log.error(error)
-            return False
+            return {"Status": False}
     else:
         function_state = response['Configuration']['State']
         if function_state == 'Active':
-            return True
+            return {"Status": True, "Message": "Active"}
+
+        elif function_state == 'Pending':
+            return {"Status": True, "Message": "Creating"}
+
         else:
-            return False
+            return {"Status": False}
 
 
 # Routes
@@ -246,7 +253,6 @@ def list_filesystems():
         raise ChaliceViewError("Check API logs")
     else:
         filesystems = response['FileSystems']
-        #app.log.debug(filesystems)
         formatted_filesystems = []
         for filesystem in filesystems:
             formatted = format_filesystem_response(filesystem)
@@ -303,21 +309,22 @@ def create_filesystem_lambda(filesystem_id):
     json_body = request.json_body
 
     try:
-        subnet_id = json_body['subnetId']
+        subnet_ids = json_body['subnetIds']
         security_groups = json_body['securityGroups']
+        uid = int(json_body['uid'])
+        gid = int(json_body['gid'])
+        path = json_body['path']
     except KeyError as error:
         app.log.error(error)
         raise BadRequestError("Check API logs")
     else:
         vpc_config = {
-            'SubnetIds': [
-                subnet_id,
-            ],
+            'SubnetIds': subnet_ids,
             'SecurityGroupIds': security_groups
         }
 
     try:
-        access_point_arn = create_filesystem_access_point(filesystem_id)
+        access_point_arn = create_filesystem_access_point(filesystem_id, uid, gid, path)
     except Exception as error:
         app.log.error(error)
         raise ChaliceViewError('Check API Logs')
@@ -333,8 +340,8 @@ def create_filesystem_lambda(filesystem_id):
     else:
         return response
 
-# TODO: Change this url path to /objects/$fsid/upload
-@app.route('/upload/{filesystem_id}', methods=["POST"], cors=True, authorizer=authorizer)
+
+@app.route('/objects/{filesystem_id}/upload', methods=["POST"], cors=True, authorizer=authorizer)
 def upload(filesystem_id):
     print(app.current_request.query_params)
     try:
@@ -365,7 +372,7 @@ def upload(filesystem_id):
         raise ChaliceViewError('Error uploading file: {payload}'.format(payload=payload))
 
 
-@app.route('/download/{filesystem_id}', methods=["GET"], cors=True, authorizer=authorizer)
+@app.route('/objects/{filesystem_id}/download', methods=["GET"], cors=True, authorizer=authorizer)
 def download(filesystem_id):
     print(app.current_request.query_params)
     try:

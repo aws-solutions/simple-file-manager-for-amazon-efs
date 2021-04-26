@@ -93,7 +93,7 @@ Resources:
         ]
       Parameters:
         ApiHandlerIamRole: !GetAtt EFSFileManagerIamRole.Arn
-        botoConfig: '{"user_agent_extra": "AwsSolution/XXX/%%VERSION%%"}'
+        botoConfig: '{"user_agent_extra": "AwsSolution/SO0145/%%VERSION%%"}'
         DeploymentPackageBucket: 
           !Join ["-", [!FindInMap ["SourceCode", "General", "RegionalS3Bucket"], Ref: "AWS::Region"]]
         DeploymentPackageKey:
