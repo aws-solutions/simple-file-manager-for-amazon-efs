@@ -85,7 +85,13 @@ def delete_access_point(access_point_arn):
 
 def format_filesystem_response(filesystem):
     filesystem_id = filesystem['FileSystemId']
-    name = filesystem["Name"]
+    new_filesystem_object = dict()
+    try:
+        name = filesystem["Name"]
+        new_filesystem_object["name"] = name
+    except KeyError:
+        pass
+    
     is_managed = has_manager_lambda(filesystem_id)
 
     lifecycle_state = filesystem['LifeCycleState']
@@ -96,8 +102,6 @@ def format_filesystem_response(filesystem):
 
     #creation_time = filesystem['CreationTime']
 
-    new_filesystem_object = dict()
-
     if is_managed["Status"] is True:
         if is_managed["Message"] == "Active":
             new_filesystem_object["managed"] = True
@@ -105,8 +109,7 @@ def format_filesystem_response(filesystem):
             new_filesystem_object["managed"] = "Creating"
     else:
         new_filesystem_object["managed"] = False
-
-    new_filesystem_object["name"] = name
+    
     new_filesystem_object["file_system_id"] = filesystem_id
     new_filesystem_object["lifecycle_state"] = lifecycle_state
     #new_filesystem_object["size_in_bytes"] = size_in_bytes
