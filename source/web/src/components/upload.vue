@@ -125,7 +125,7 @@ export default {
         chunkData.content = await this.blobToBase64(chunk)
         
         let chunkStatus = await this.uploadChunk(chunkData)
-        if (!chunkStatus) { //Check if 200 response code 
+        if (!chunkStatus) { //Check if not a 200 response code 
           alert("Upload failed")
           // Delete partially uploaded file.
           this.deleteFile()
@@ -161,7 +161,7 @@ export default {
           let chunkStatus = await this.uploadChunk(chunkData)
           
           
-          if (!chunkStatus) { //Check if 200 response code 
+          if (!chunkStatus) { //Check if not a 200 response code 
             alert("Upload failed")
             // Delete partially uploaded file.
             this.deleteFile()
@@ -188,7 +188,7 @@ export default {
           
           let chunkStatus = await this.uploadChunk(chunkData)
           
-          if (!chunkStatus) { //Check if 200 response code 
+          if (!chunkStatus) { //Check if not a 200 response code 
             alert("Upload failed")
             // Delete partially uploaded file.
             this.deleteFile()
