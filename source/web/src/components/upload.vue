@@ -64,6 +64,20 @@ export default {
         reader.readAsDataURL(blob);
       });
     },
+    async deleteFile () {
+          let requestParams = { 
+              queryStringParameters: {  
+                path: this.path,
+                name: this.fileToUpload.name
+            }
+          };
+          try {
+              await API.del('fileManagerApi', '/api/objects/' + this.$route.params.id, requestParams)
+          }
+          catch (error) {
+              console.log(error)
+          }
+    },
     async uploadChunk(chunkData) {  
       let requestParams = { 
           queryStringParameters: {  
@@ -76,7 +90,19 @@ export default {
           body: chunkData
       };
       let response = await API.post('fileManagerApi', '/api/objects/' + this.$route.params.id + '/upload', requestParams)
-      return response
+      let chunkStatus = false;
+      if(response.statusCode == 200){
+          chunkStatus = true
+      }else{
+          //Retry request
+          response = await API.post('fileManagerApi', '/api/objects/' + this.$route.params.id + '/upload', requestParams)
+          if(response.statusCode == 200){
+            chunkStatus = true
+          }else{
+              chunkStatus = false
+          }
+      }
+      return chunkStatus
     },
     // this whole function needs to be cleaned up, notably reduce duplicate code by breaking out into functions - works well for now though
     async upload(chunkIndex, chunkOffset) {
@@ -98,9 +124,11 @@ export default {
         chunkData.content = await this.blobToBase64(chunk)
         
         let chunkStatus = await this.uploadChunk(chunkData)
-        if (chunkStatus.statusCode != 200) {
-          // could add retry functionality here
+        if (!chunkStatus) { //Check if not a 200 response code 
           alert("Upload failed")
+          // Delete partially uploaded file.
+          this.deleteFile()
+          this.afterComplete()
         }
         else {
           if (this.totalChunks == 1 || this.totalChunks < 1) {
@@ -132,9 +160,11 @@ export default {
           let chunkStatus = await this.uploadChunk(chunkData)
           
           
-          if (chunkStatus.statusCode != 200) {
-            // could add retry functionality here
+          if (!chunkStatus) { //Check if not a 200 response code 
             alert("Upload failed")
+            // Delete partially uploaded file.
+            this.deleteFile()
+            this.afterComplete()
           }
           else {
             this.uploading = false
@@ -157,9 +187,11 @@ export default {
           
           let chunkStatus = await this.uploadChunk(chunkData)
           
-          if (chunkStatus.statusCode != 200) {
-            // could add retry functionality here
+          if (!chunkStatus) { //Check if not a 200 response code 
             alert("Upload failed")
+            // Delete partially uploaded file.
+            this.deleteFile()
+            this.afterComplete()
           }
           else {
             let nextChunkIndex = chunkIndex + 1
