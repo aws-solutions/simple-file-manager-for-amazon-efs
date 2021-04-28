@@ -72,8 +72,7 @@ export default {
             }
           };
           try {
-              let response = await API.del('fileManagerApi', '/api/objects/' + this.$route.params.id, requestParams)
-              console.log(response)
+              await API.del('fileManagerApi', '/api/objects/' + this.$route.params.id, requestParams)
           }
           catch (error) {
               console.log(error)
