@@ -46,28 +46,39 @@ Resources:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: "*"
+                Resource: 
+                  !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*
               - Effect: Allow
                 Action:
                   - "lambda:CreateFunction"
                   - "lambda:InvokeFunction"
                   - "lambda:GetFunction"
+                Resource: 
+                  !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:*
+              - Effect: Allow
+                Action:
                   - "iam:CreateRole"
                   - "iam:AttachRolePolicy"
-                  - "elasticfilesystem:DescribeMountTargetSecurityGroups"
+                Resource: 
+                  !Sub arn:aws:iam:${AWS::Region}:${AWS::AccountId}:*
+              - Effect: Allow
+                Action:
                   - "ec2:DescribeSecurityGroups"
                   - "ec2:DescribeSubnets"
                   - "ec2:DescribeVpcs"
-                Resource: "*"
+                Resource: 
+                  !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:*
               - Effect: Allow
                 Action:
                   - "elasticfilesystem:DescribeMountTargets"
                   - "elasticfilesystem:DeleteAccessPoint"
                   - "elasticfilesystem:DescribeFileSystems"
                   - "elasticfilesystem:CreateAccessPoint"
+                  - "elasticfilesystem:DescribeMountTargetSecurityGroups"
                 Resource:
                   - "arn:aws:elasticfilesystem:*:*:file-system/*"
                   - "arn:aws:elasticfilesystem:*:*:access-point/*"
+                  - "arn:aws:elasticfilesystem:*:*:*"
               # TODO: Add iam:passedtoservice condition key
               - Effect: Allow
                 Action:
