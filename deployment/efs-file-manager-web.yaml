@@ -60,8 +60,12 @@ Resources:
             Version: 2012-10-17
             Statement:
               - Effect: Allow
-                Action: ['logs:*']
-                Resource: 'arn:aws:logs:*:*:*'
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: 
+                  !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*
   GetWebsiteBucketName:
     Type: Custom::CustomResource
     Properties:

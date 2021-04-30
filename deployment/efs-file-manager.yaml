@@ -26,6 +26,11 @@ Resources:
   # TODO: Scope some of the inline policies down
   EFSFileManagerIamRole:
     Type: "AWS::IAM::Role"
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "* resource needed for ec2:DescribeSecurityGroups and lambda:CreateFunction in this policy"
     Properties:
       AssumeRolePolicyDocument:
         Version: 2012-10-17
@@ -46,15 +51,18 @@ Resources:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: "*"
+                Resource: 
+                  !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+              - Effect: Allow
+                Action:
+                  - "iam:CreateRole"
+                  - "iam:AttachRolePolicy"
+                Resource: "arn:aws:iam::*:*"
               - Effect: Allow
                 Action:
                   - "lambda:CreateFunction"
                   - "lambda:InvokeFunction"
                   - "lambda:GetFunction"
-                  - "iam:CreateRole"
-                  - "iam:AttachRolePolicy"
-                  - "elasticfilesystem:DescribeMountTargetSecurityGroups"
                   - "ec2:DescribeSecurityGroups"
                   - "ec2:DescribeSubnets"
                   - "ec2:DescribeVpcs"
@@ -65,9 +73,11 @@ Resources:
                   - "elasticfilesystem:DeleteAccessPoint"
                   - "elasticfilesystem:DescribeFileSystems"
                   - "elasticfilesystem:CreateAccessPoint"
+                  - "elasticfilesystem:DescribeMountTargetSecurityGroups"
                 Resource:
                   - "arn:aws:elasticfilesystem:*:*:file-system/*"
                   - "arn:aws:elasticfilesystem:*:*:access-point/*"
+                  - "arn:aws:elasticfilesystem:*:*:*"
               # TODO: Add iam:passedtoservice condition key
               - Effect: Allow
                 Action:
