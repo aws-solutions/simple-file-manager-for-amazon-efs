@@ -96,7 +96,7 @@ Resources:
                     - 'logs:CreateLogGroup'
                     - 'logs:CreateLogStream'
                     - 'logs:PutLogEvents'
-                  Resource: 'arn:aws:logs:*:*:*'
+                  Resource: 'arn:aws:logs:*'
 
   SimpleFileManagerIdentityPool:
     Type: AWS::Cognito::IdentityPool
@@ -123,6 +123,11 @@ Resources:
 
   CognitoStandardAuthDefaultRole:
     Type: "AWS::IAM::Role"
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: F38
+            reason: "* resource is used to deny access in this policy"
     Properties:
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
@@ -143,7 +148,7 @@ Resources:
             Version: "2012-10-17"
             Statement:
               - Action: "*"
-                Resource: arn:aws:*:*:${AWS::AccountId}:*
+                Resource: "*"
                 Effect: "Deny"
 
   CognitoStandardUnauthDefaultRole:

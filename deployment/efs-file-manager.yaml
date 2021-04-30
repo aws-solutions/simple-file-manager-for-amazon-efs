@@ -26,6 +26,11 @@ Resources:
   # TODO: Scope some of the inline policies down
   EFSFileManagerIamRole:
     Type: "AWS::IAM::Role"
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "* resource needed for ec2:DescribeSecurityGroups and lambda:CreateFunction in this policy"
     Properties:
       AssumeRolePolicyDocument:
         Version: 2012-10-17
@@ -47,27 +52,21 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: 
-                  !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*
+                  !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+              - Effect: Allow
+                Action:
+                  - "iam:CreateRole"
+                  - "iam:AttachRolePolicy"
+                Resource: "arn:aws:iam::*:*"
               - Effect: Allow
                 Action:
                   - "lambda:CreateFunction"
                   - "lambda:InvokeFunction"
                   - "lambda:GetFunction"
-                Resource: 
-                  !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:*
-              - Effect: Allow
-                Action:
-                  - "iam:CreateRole"
-                  - "iam:AttachRolePolicy"
-                Resource: 
-                  !Sub arn:aws:iam:${AWS::Region}:${AWS::AccountId}:*
-              - Effect: Allow
-                Action:
                   - "ec2:DescribeSecurityGroups"
                   - "ec2:DescribeSubnets"
                   - "ec2:DescribeVpcs"
-                Resource: 
-                  !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:*
+                Resource: "*"
               - Effect: Allow
                 Action:
                   - "elasticfilesystem:DescribeMountTargets"
