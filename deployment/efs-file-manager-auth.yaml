@@ -45,6 +45,13 @@ Resources:
 
   CognitoRoleMappingTransformer:
       Type: AWS::Lambda::Function
+      Metadata:
+        cfn_nag:
+          rules_to_suppress:
+            - id: W89
+              reason: "Custom resource deployed in default VPC"
+            - id: W92
+              reason: "ReservedConcurrentExecutions not needed since this function runs once when CloudFormation deploys"
       Properties:
         Code:
           ZipFile: |
