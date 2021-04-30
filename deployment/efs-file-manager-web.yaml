@@ -22,6 +22,13 @@ Mappings:
 Resources:
   WebsiteBucketNameFunction:
     Type: AWS::Lambda::Function
+    Metadata:
+        cfn_nag:
+          rules_to_suppress:
+            - id: W89
+              reason: "Custom resource deployed in default VPC"
+            - id: W92
+              reason: "ReservedConcurrentExecutions not needed since this function runs once when CloudFormation deploys"
     Properties:
       Code:
         ZipFile: |
@@ -154,6 +161,11 @@ Resources:
 
   EFSFileSimpleWebsiteDistribution:
     Type: AWS::CloudFront::Distribution
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W70
+            reason: "Cloudfront protocol version TLS 1.2"
     Properties:
       DistributionConfig:
         Comment: "Website distribution for Content Analysis Solution"
@@ -247,6 +259,13 @@ Resources:
 
   WebsiteDeployHelper:
     Type: AWS::Lambda::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: "Custom resource deployed in default VPC"
+          - id: W92
+            reason: "ReservedConcurrentExecutions not needed since this function runs once when CloudFormation deploys"
     Properties:
       Code:
         S3Bucket: !Join ["-", [!FindInMap ["EFSFileSimpleApp", "SourceCode", "S3Bucket"], Ref: "AWS::Region"]]
