@@ -258,9 +258,4 @@ b-button {
 .dirBtn {
     color:#FF9900!important;
 }
-
-.topAlert {
-  position: absolute;
-  z-index: 100;
-}
 </style>
