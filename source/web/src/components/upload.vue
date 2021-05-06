@@ -54,8 +54,18 @@ export default {
     }
   },
   methods: {
-    afterComplete() {
-      this.$emit('uploadCompleted')
+    afterComplete(status) {
+      let formattedResponse = {"type": "", "message": ""}
+      if (status == true) {
+        formattedResponse.type = "success"
+        formattedResponse.message = "File uploaded successfully!"
+        this.$emit('uploadCompleted', formattedResponse)
+      }
+      else {
+        formattedResponse.type = "danger"
+        formattedResponse.message = "File was unable to be uploaded successfully. Check API logs."
+        this.$emit('uploadCompleted', formattedResponse)
+      }
     },
     blobToBase64(blob) {
       return new Promise((resolve) => {
@@ -125,15 +135,14 @@ export default {
         
         let chunkStatus = await this.uploadChunk(chunkData)
         if (!chunkStatus) { //Check if not a 200 response code 
-          alert("Upload failed")
           // Delete partially uploaded file.
           this.deleteFile()
-          this.afterComplete()
+          this.afterComplete(false)
         }
         else {
           if (this.totalChunks == 1 || this.totalChunks < 1) {
             this.uploading = false
-            this.afterComplete()
+            this.afterComplete(true)
           }
           else {
             let nextChunkIndex = 1
@@ -161,14 +170,13 @@ export default {
           
           
           if (!chunkStatus) { //Check if not a 200 response code 
-            alert("Upload failed")
             // Delete partially uploaded file.
             this.deleteFile()
-            this.afterComplete()
+            this.afterComplete(false)
           }
           else {
             this.uploading = false
-            this.afterComplete()
+            this.afterComplete(true)
           }
         }
         // in this case there are chunks remaining, so we continue to upload chunks
@@ -188,10 +196,9 @@ export default {
           let chunkStatus = await this.uploadChunk(chunkData)
           
           if (!chunkStatus) { //Check if not a 200 response code 
-            alert("Upload failed")
             // Delete partially uploaded file.
             this.deleteFile()
-            this.afterComplete()
+            this.afterComplete(false)
           }
           else {
             let nextChunkIndex = chunkIndex + 1

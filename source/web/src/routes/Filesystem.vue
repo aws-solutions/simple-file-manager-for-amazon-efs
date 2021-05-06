@@ -1,5 +1,14 @@
 <template>
   <div>
+    <b-alert
+      :variant="alertType"
+      dismissible
+      fade
+      :show="showAlert"
+      @dismissed="showAlert=false"
+    >
+    {{ alertMessage }}
+  </b-alert>
   <b-container fluid='true' class="bv-example-row">
   <br>
   <h2 id=title>Filesystem {{ $route.params.id }}</h2>
@@ -18,7 +27,7 @@
                         Create directory
                     <b-icon icon="folder-plus" aria-hidden="true"></b-icon>
                     </b-button>
-                    <b-modal hide-footer id="dir-modal">
+                    <b-modal ref="makedir" hide-footer id="dir-modal">
                         <makedir @dirCreated=refresh v-bind:nav="navObjects"/>
                     </b-modal>
                 </b-col>
@@ -110,7 +119,10 @@ export default {
                 to: {name: 'filesystem', query: {'path': '/mnt/efs'}},
                 active: true
             }
-        ]
+        ],
+        showAlert: false,
+        alertMessage: null,
+        alertType: null
     }
   },
   mounted: function () {
@@ -120,13 +132,17 @@ export default {
       operationStart () {
           this.active = true
       },
-      refresh () {
+      refresh (response) {
           this.dirs = []
           this.files = []
           this.retrieveObjects()
           this.$refs['download'].hide()
           this.$refs['upload'].hide()
+          this.$refs['makedir'].hide()
           this.active = false
+          this.alertMessage = response.message
+          this.alertType = response.type
+          this.showAlert = true
       },
       navigateBack () {
           if (this.navObjects.length > 1) {
@@ -162,16 +178,23 @@ export default {
                 name: name
             }
           };
+          let formattedResponse = {"type": "", "message": ""}
           try {
               let response = await API.del('fileManagerApi', '/api/objects/' + this.$route.params.id, requestParams)
-              console.log(response)
-              alert(JSON.stringify(response))
-              this.refresh()
+              if (response.statusCode != 200) {
+                formattedResponse.type = "danger"
+                formattedResponse.message = "File was unable to be deleted successfully. Check API logs."
+              }
+              else {
+                 formattedResponse.type = "success"
+                 formattedResponse.message = "File deleted successfully!"
+              }
           }
           catch (error) {
-              alert('Unable to delete file, check api logs')
-              console.log(error)
+            formattedResponse.type = "danger"
+            formattedResponse.message = "File was unable to be deleted successfully. Check API logs."
           }
+          this.refresh(formattedResponse)
         },
       addDirectoryObject (directory) {
           this.navObjects[this.navObjects.length - 1].active = false
@@ -198,8 +221,8 @@ export default {
               this.listObjects(response)
           }
           catch (error) {
-              alert('Unable to list filesystem objects, check api logs')
-              console.log(error)
+              let formattedResponse = {"type": "danger", "message": "Unable to list filesystem objects. Check API logs."}
+              this.refresh(formattedResponse)
           }
         }
     }
@@ -234,5 +257,10 @@ b-button {
 
 .dirBtn {
     color:#FF9900!important;
+}
+
+.topAlert {
+  position: absolute;
+  z-index: 100;
 }
 </style>

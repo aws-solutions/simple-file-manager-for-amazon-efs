@@ -21,14 +21,14 @@
     </b-col>
   </b-row>
 </b-container>
-  </div>
+</div>
 </template>
 
 <script>
 import { API } from 'aws-amplify';
 
 export default {
-  name: 'upload',
+  name: 'makedir',
   props: ['nav'],
   computed: {
     path: function () {
@@ -55,15 +55,23 @@ export default {
                 "Content-Type": "application/json"
           },
          }
+          let formattedResponse = {"type": "", "message": ""}
           try {
               let response = await API.post('fileManagerApi', '/api/objects/' + this.$route.params.id + '/dir', params)
-              alert(JSON.stringify(response))
-              this.$emit('dirCreated')
+              if (response.statusCode != 200) {
+                formattedResponse.type = "danger"
+                formattedResponse.message = "Could not create directory. Check API logs. "
+              }
+              else {
+                formattedResponse.type = "success"
+                formattedResponse.message = "Directory created!"
+              }
           }
           catch (error) {
-              alert('Unable to create directory, check api logs')
-              console.log(error)
+              formattedResponse.type = "danger"
+              formattedResponse.message = "Could not create directory. Check API logs. "
           }
+          this.$emit('dirCreated', formattedResponse)
       },
     onSubmit(evt) {
         evt.preventDefault()
