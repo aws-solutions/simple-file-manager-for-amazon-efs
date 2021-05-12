@@ -78,8 +78,6 @@ export default {
             mountTargetNetinfo['gid'] = this.gid
             mountTargetNetinfo['path'] = this.path
 
-            console.log(mountTargetNetinfo)
-
             this.createManagerLambda(mountTargetNetinfo)
         }
         else {
@@ -91,17 +89,25 @@ export default {
           let securityGroups = []
         
           for (var i=0, n=netinfo.length; i < n; ++i ) {
-              if (i === 5) { break; }
               let mountTarget = Object.keys(netinfo[i])[0]
-
               let subnet = netinfo[i][mountTarget]['subnet_id']
               let securityGroup = netinfo[i][mountTarget]['security_groups']
 
               subnets.push(subnet)
               securityGroups.push.apply(securityGroups, securityGroup)
           }
+
+          let uniqSecurityGroups = [...new Set(securityGroups)]
+
+          if (uniqSecurityGroups.length > 5) {
+              uniqSecurityGroups = uniqSecurityGroups.slice(0, 4)
+          }
           
-          let tmpNetinfo = {'subnetIds': subnets, 'securityGroups': securityGroups}
+          if (subnets.length > 5) {
+              subnets = subnets.slice(0, 4)
+          }
+
+          let tmpNetinfo = {'subnetIds': subnets, 'securityGroups': uniqSecurityGroups}
           
           return tmpNetinfo
       },
@@ -113,7 +119,6 @@ export default {
           }
           catch (error) {
               alert('Unable to retrieve filesystem netinfo, check api logs')
-              console.log(error)
           }
       },
       async createManagerLambda (netinfo) {
@@ -123,14 +128,12 @@ export default {
          }
           try {
               this.processing = true
-              let response = await API.post('fileManagerApi', '/api/filesystems/' + this.$route.params.id + '/lambda', params)
-              console.log(response)
+              await API.post('fileManagerApi', '/api/filesystems/' + this.$route.params.id + '/lambda', params)
               this.processing = false
               this.$router.push({ name: "home" })
           }
           catch (error) {
               alert('Unable to create filesystem lambda, check api logs')
-              console.log(error)
               this.processing = false
           }
       }
