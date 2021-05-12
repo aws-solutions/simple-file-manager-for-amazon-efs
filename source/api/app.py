@@ -70,7 +70,9 @@ def create_filesystem_access_point(filesystem_id, uid, gid, path):
         return ChaliceViewError(error)
     else:
         access_point_arn = response['AccessPointArn']
-        return access_point_arn
+        access_point_id = response['AccessPointId']
+        access_point = {"access_point_arn": access_point_arn, "access_point_id": access_point_id}
+        return access_point
 
 
 def delete_access_point(access_point_arn):
@@ -210,10 +212,7 @@ def create_function(filesystem_id, access_point_arn, vpc):
             ]
         )
     except botocore.exceptions.ClientError as error:
-        app.log.error(error)
-        app.log.debug('failed to create lambda, deleting access point')
-        delete_access_point(access_point_arn)
-        raise ChaliceViewError("Check API logs")
+        raise Exception(error)
     else:
         return response
 
@@ -305,7 +304,6 @@ def get_netinfo_for_filesystem(filesystem_id):
 
     return netinfo
 
-
 @app.route('/filesystems/{filesystem_id}/lambda', methods=['POST'], cors=True, authorizer=authorizer)
 def create_filesystem_lambda(filesystem_id):
     request = app.current_request
@@ -327,7 +325,7 @@ def create_filesystem_lambda(filesystem_id):
         }
 
     try:
-        access_point_arn = create_filesystem_access_point(filesystem_id, uid, gid, path)
+        access_point = create_filesystem_access_point(filesystem_id, uid, gid, path)
     except Exception as error:
         app.log.error(error)
         raise ChaliceViewError('Check API Logs')
@@ -336,9 +334,11 @@ def create_filesystem_lambda(filesystem_id):
     time.sleep(10)
 
     try:
-        response = create_function(filesystem_id, access_point_arn, vpc_config)
+        response = create_function(filesystem_id, access_point["access_point_arn"], vpc_config)
     except Exception as error:
         app.log.error(error)
+        app.log.debug('Failed to create lambda, deleting access point')
+        delete_access_point(access_point["access_point_id"])
         raise ChaliceViewError('Check API Logs')
     else:
         return response
