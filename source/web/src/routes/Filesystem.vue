@@ -52,7 +52,7 @@
                         <b-icon icon="box-arrow-up" aria-hidden="true"></b-icon>
                     </b-button>
                     <b-modal ref="upload" v-bind:no-close-on-backdrop="active" hide-header hide-footer id="upload-modal">
-                        <upload @uploadStarted=operationStart @uploadCompleted=refresh v-bind:nav="navObjects"/>
+                        <upload @uploadStarted=operationStart @uploadCompleted=refresh :nav="navObjects" :files="files"/>
                     </b-modal>
                 </b-col>
             </b-row>

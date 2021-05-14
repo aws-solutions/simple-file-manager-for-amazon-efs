@@ -17,7 +17,7 @@
             </div>
           </div>
           <div v-if="!uploading">
-            <b-button @click="upload(0,0)">Upload</b-button>
+            <b-button @click="checkIfFileExists()">Upload</b-button>
           </div>
     </b-col>
   </b-row>
@@ -30,13 +30,18 @@ import { API } from 'aws-amplify';
 
 export default {
   name: 'upload',
-  props: ['nav'],
+  props: ['nav', 'files'],
   computed: {
     path: function () {
       return this.nav[this.nav.length - 1].to.query.path
     },
     value: function () {
       return ((this.currentChunk + 1) / this.totalChunks) * 100
+    },
+    fileNames: function () {
+      let fileNames = []
+      this.files.forEach(element => fileNames.push(element.Name))
+      return fileNames
     }
   },
   mounted: function () {
@@ -54,16 +59,16 @@ export default {
     }
   },
   methods: {
-    afterComplete(status) {
+    afterComplete(status, message) {
       let formattedResponse = {"type": "", "message": ""}
       if (status == true) {
         formattedResponse.type = "success"
-        formattedResponse.message = "File uploaded successfully!"
+        formattedResponse.message = message
         this.$emit('uploadCompleted', formattedResponse)
       }
       else {
         formattedResponse.type = "danger"
-        formattedResponse.message = "File was unable to be uploaded successfully. Check API logs."
+        formattedResponse.message = message
         this.$emit('uploadCompleted', formattedResponse)
       }
     },
@@ -114,6 +119,15 @@ export default {
       }
       return chunkStatus
     },
+    checkIfFileExists () {
+      if (this.fileNames.indexOf(this.fileToUpload.name) > -1 ) {
+        console.log(this.fileToUpload.name, this.fileNames)
+        this.afterComplete(false, "File already exists.")
+      }
+      else {
+        this.upload(0, 0)
+      }
+    },
     // this whole function needs to be cleaned up, notably reduce duplicate code by breaking out into functions - works well for now though
     async upload(chunkIndex, chunkOffset) {
       this.currentChunk = chunkIndex
@@ -137,12 +151,12 @@ export default {
         if (!chunkStatus) { //Check if not a 200 response code 
           // Delete partially uploaded file.
           this.deleteFile()
-          this.afterComplete(false)
+          this.afterComplete(false, "File was unable to be uploaded successfully. Check API logs.")
         }
         else {
           if (this.totalChunks == 1 || this.totalChunks < 1) {
             this.uploading = false
-            this.afterComplete(true)
+            this.afterComplete(true, "File uploaded successfully!")
           }
           else {
             let nextChunkIndex = 1
@@ -172,11 +186,11 @@ export default {
           if (!chunkStatus) { //Check if not a 200 response code 
             // Delete partially uploaded file.
             this.deleteFile()
-            this.afterComplete(false)
+            this.afterComplete(false, "File was unable to be uploaded successfully. Check API logs.")
           }
           else {
             this.uploading = false
-            this.afterComplete(true)
+            this.afterComplete(true, "File uploaded successfully!")
           }
         }
         // in this case there are chunks remaining, so we continue to upload chunks
@@ -198,7 +212,7 @@ export default {
           if (!chunkStatus) { //Check if not a 200 response code 
             // Delete partially uploaded file.
             this.deleteFile()
-            this.afterComplete(false)
+            this.afterComplete(false, "File was unable to be uploaded successfully. Check API logs.")
           }
           else {
             let nextChunkIndex = chunkIndex + 1
