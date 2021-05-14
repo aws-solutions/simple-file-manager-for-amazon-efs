@@ -38,7 +38,7 @@ jobs:
         if: ${{ failure() }}
         uses: nashmaniac/create-issue-action@v1.1
         with:
-          title: Nightly build for $SHORT_SHA Failed
+          title: Nightly build failed
           token: ${{secrets.GITHUB_TOKEN}}
           assignees: brandold
           labels: bug
@@ -101,7 +101,7 @@ jobs:
         if: ${{ failure() }}
         uses: nashmaniac/create-issue-action@v1.1
         with:
-          title: Nightly test for $SHORT_SHA Failed
+          title: Nightly test for failed
           token: ${{secrets.GITHUB_TOKEN}}
           assignees: brandold
           labels: bug
