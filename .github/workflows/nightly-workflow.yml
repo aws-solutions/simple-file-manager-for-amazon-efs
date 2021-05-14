@@ -83,15 +83,15 @@ jobs:
           echo "SFM_ENDPOINT=`aws cloudformation describe-stacks --query 'Stacks[?starts_with(StackName, \`sfm-dev-EFSFileWebApplication\`)].Outputs[0].OutputValue' --output text`" >> $GITHUB_ENV
       - name: Set admin creds
         run: |
-          echo "SFM_USERNAME=${{ secrets.TEST_ADMIN_EMAIL }}" >> $GITHUB_ENV
-          echo "SFM_PASSWORD=${{ secrets.TEST_ADMIN_PASSWORD }} >> $GITHUB_ENV
+          echo SFM_USERNAME=${{ secrets.TEST_ADMIN_EMAIL }} >> $GITHUB_ENV
+          echo SFM_PASSWORD=${{ secrets.TEST_ADMIN_PASSWORD }} >> $GITHUB_ENV
       - name: Set media path and file name
         run: |
-          echo "TEST_MEDIA_PATH=./" >> $GITHUB_ENV
-          echo "TEST_FILE_NAME=run_e2e.sh" >> $GITHUB_ENV
+          echo TEST_MEDIA_PATH=./ >> $GITHUB_ENV
+          echo TEST_FILE_NAME=run_e2e.sh >> $GITHUB_ENV
       - name: Set filesystem id
         run: |
-          echo "FILESYSTEM_ID=${{ secrets.TEST_FILESYSEM_ID }}" >> $GITHUB_ENV
+          echo FILESYSTEM_ID=${{ secrets.TEST_FILESYSEM_ID }} >> $GITHUB_ENV
       - name: Run E2E tests
         run: |
           cd $GITHUB_WORKSPACE
