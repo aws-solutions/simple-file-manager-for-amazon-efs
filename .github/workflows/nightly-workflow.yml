@@ -33,7 +33,7 @@ jobs:
           DIST_OUTPUT_BUCKET=sfm-dev
           TEMPLATE_OUTPUT_BUCKET=sfm-dev-us-west-2
           ./build-s3-dist.sh --no-layer --template-bucket $TEMPLATE_OUTPUT_BUCKET --code-bucket $DIST_OUTPUT_BUCKET --version $VERSION --region $REGION
-          aws cloudformation deploy --stack-name $SFM_STACK_NAME --region $REGION --template-file global-s3-assets/efs-file-manager.template --s3-bucket $DIST_OUTPUT_BUCKET-$REGION --s3-prefix efs_file_manager/$VERSION --parameter-overrides AdminEmail=brandold@amazon.com --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --force-upload
+          aws cloudformation deploy --stack-name $SFM_STACK_NAME --region $REGION --template-file global-s3-assets/efs-file-manager.template --s3-bucket $DIST_OUTPUT_BUCKET-$REGION --s3-prefix efs_file_manager/$VERSION --parameter-overrides AdminEmail=${{ secrets.TEST_ADMIN_EMAIL }} --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --force-upload
       - name: Build Failed
         if: ${{ failure() }}
         uses: nashmaniac/create-issue-action@v1.1
@@ -77,7 +77,21 @@ jobs:
           echo "USER_POOL_ID=`aws cloudformation describe-stacks --query 'Stacks[?starts_with(StackName, \`sfm-dev-EFSFileAuthentication\`)].Outputs[1].OutputValue' --output text`" >> $GITHUB_ENV
       - name: Reset SFM user password
         run: |
-          aws cognito-idp admin-set-user-password --user-pool-id $USER_POOL_ID --username "brandondold@gmail.com" --password ${{ secrets.TEMP_PASSWORD }} --permanent
+          aws cognito-idp admin-set-user-password --user-pool-id $USER_POOL_ID --username ${{ secrets.TEST_ADMIN_EMAIL }} --password ${{ secrets.TEST_ADMIN_PASSWORD }} --permanent
+      - name: Get SFM endpoint
+        run: |
+          echo "SFM_ENDPOINT=`aws cloudformation describe-stacks --query 'Stacks[?starts_with(StackName, \`sfm-dev-EFSFileWebApplication\`)].Outputs[0].OutputValue' --output text`" >> $GITHUB_ENV
+      - name: Set admin creds
+        run: |
+          echo "SFM_USERNAME=${{ secrets.TEST_ADMIN_EMAIL }}" >> $GITHUB_ENV
+          echo "SFM_PASSWORD=${{ secrets.TEST_ADMIN_PASSWORD }} >> $GITHUB_ENV
+      - name: Set media path and file name
+        run: |
+          echo "TEST_MEDIA_PATH=./" >> $GITHUB_ENV
+          echo "TEST_FILE_NAME=run_e2e.sh" >> $GITHUB_ENV
+      - name: Set filesystem id
+        run: |
+          echo "FILESYSTEM_ID=${{ secrets.TEST_FILESYSEM_ID }}" >> $GITHUB_ENV
       - name: Run E2E tests
         run: |
           cd $GITHUB_WORKSPACE
@@ -95,3 +109,7 @@ jobs:
       - name: Delete stack
         run: |
           aws cloudformation delete-stack --stack-name $SFM_STACK_NAME
+      - name: Delete SFM created resources
+        run: |
+          aws lambda delete-function --function-name $FILESYSTEM_ID-manager-lambda
+          aws iam delete-role --role-name $FILESYSTEM_ID-manager-role

@@ -4,43 +4,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 ###############################################################################
-# PURPOSE: This script runs our pytest e2e test suite.
-#
-# PRELIMINARY:
-#  You must have a functioning SFM deployment. Set the required environment variables; see the testing readme for more
-#  details.
+# PURPOSE: This script runs our pytest e2e test within the github actions environment.
 #
 # USAGE:
-#  ./run_e2e.sh $component
+#  ./run_e2e.sh
 #
 ###############################################################################
-# User-defined environment variables
 
-# if [ -z SFM_REGION ]
-# then
-#     echo "You must set the AWS region your SFM stack is install in under the env variable 'SFM_REGION'. Quitting."
-#     exit
-# fi
-
-# if [ -z SFM_STACK_NAME ]
-# then
-#     echo "You must set the name of your SFM stack under the env variable 'SFM_STACK_NAME'. Quitting."
-#     exit
-# fi
-
-# if [ -z AWS_ACCESS_KEY_ID ]
-# then
-#     echo "You must set the env variable 'AWS_ACCESS_KEY_ID' with a valid IAM access key id. Quitting."
-#     exit
-# fi
-
-# if [ -z AWS_SECRET_ACCESS_KEY ]
-# then
-#     echo "You must set the env variable 'AWS_SECRET_ACCESS_KEY' with a valid IAM secret access key. Quitting."
-#     exit
-# fi
-
-#################### Nothing for users to change below here ####################
 # Create and activate a temporary Python environment for this script.
 echo "------------------------------------------------------------------------------"
 echo "Creating a temporary Python virtualenv for this script"
@@ -64,17 +34,8 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 echo "------------------------------------------------------------------------------"
-echo "Setup test environment variables"
-
-export TEST_MEDIA_PATH="../test-media/"
-export TEST_VIDEO="sample-video.mp4"
-
-echo "------------------------------------------------------------------------------"
-
 
 pytest
-
-# pytest -s -W ignore::DeprecationWarning -p no:cacheproviders
 
 if [ $? -eq 0 ]; then
     exit 0
