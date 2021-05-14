@@ -33,7 +33,7 @@
                 </b-col>
             </b-row>
             <b-breadcrumb v-on:click="navigateBack" :items="navObjects"></b-breadcrumb>
-            <b-table striped hover :items="dirs">
+            <b-table striped hover sort-by="Directory" sort-desc="true" :items="dirs">
                 <template v-slot:cell(Directory)="data">
                     <b-button @click='addDirectoryObject(data.value)' variant="link">{{ data.value }}</b-button>
                 </template>
