@@ -65,8 +65,8 @@ def test_complete_app(browser, testing_env_variables):
     
     time.sleep(5)
 
-    dir_object = browser.find_element_by_xpath("/html/body/div/div[2]/div[2]/div/div[1]/div/div/table/tbody/tr/td/button")
-
+    dir_object = browser.find_element_by_xpath("/html/body/div/div[2]/div/div/div[1]/div/div/table/tbody/tr[1]/td/button")
+    
     assert dir_object.text == current_time
 
     # Upload file
