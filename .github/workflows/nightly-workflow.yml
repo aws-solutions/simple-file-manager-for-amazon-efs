@@ -112,4 +112,7 @@ jobs:
       - name: Delete SFM created resources
         run: |
           aws lambda delete-function --function-name $FILESYSTEM_ID-manager-lambda
+          aws iam detach-role-policy --role-name $FILESYSTEM_ID-manager-role --policy-arn arn:aws:iam::aws:policy/AmazonElasticFileSystemClientReadWriteAccess
+          aws iam detach-role-policy --role-name $FILESYSTEM_ID-manager-role --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+          aws iam detach-role-policy --role-name $FILESYSTEM_ID-manager-role --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
           aws iam delete-role --role-name $FILESYSTEM_ID-manager-role
