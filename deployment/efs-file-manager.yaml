@@ -84,6 +84,14 @@ Resources:
                   - "iam:PassRole"
                 Resource:
                   - "arn:aws:iam::*:role/fs-*"
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: lambda.amazonaws.com
+                  StringLike:
+                    iam:AssociatedResourceARN:
+                    - !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${AWS::StackName}*"
+
+
 
 
   # File Manager API stack
