@@ -78,13 +78,14 @@ Resources:
                   - "arn:aws:elasticfilesystem:*:*:file-system/*"
                   - "arn:aws:elasticfilesystem:*:*:access-point/*"
                   - "arn:aws:elasticfilesystem:*:*:*"
-              # TODO: Add iam:passedtoservice condition key
               - Effect: Allow
                 Action:
                   - "iam:PassRole"
                 Resource:
                   - "arn:aws:iam::*:role/fs-*"
-
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: lambda.amazonaws.com
 
   # File Manager API stack
   EFSFileManagerAPI:
