@@ -56,13 +56,10 @@ Resources:
               - Effect: Allow
                 Action:
                   - "iam:CreateRole"
-                  - "iam:AttachRolePolicy"
                 Resource: "arn:aws:iam::*:*"
               - Effect: Allow
                 Action:
                   - "lambda:CreateFunction"
-                  - "lambda:InvokeFunction"
-                  - "lambda:GetFunction"
                   - "ec2:DescribeSecurityGroups"
                   - "ec2:DescribeSubnets"
                   - "ec2:DescribeVpcs"
@@ -70,9 +67,9 @@ Resources:
               - Effect: Allow
                 Action:
                   - "elasticfilesystem:DescribeMountTargets"
-                  - "elasticfilesystem:DeleteAccessPoint"
                   - "elasticfilesystem:DescribeFileSystems"
                   - "elasticfilesystem:CreateAccessPoint"
+                  - "elasticfilesystem:DescribeAccessPoints"
                   - "elasticfilesystem:DescribeMountTargetSecurityGroups"
                 Resource:
                   - "arn:aws:elasticfilesystem:*:*:file-system/*"
@@ -82,10 +79,29 @@ Resources:
                 Action:
                   - "iam:PassRole"
                 Resource:
-                  - "arn:aws:iam::*:role/fs-*"
+                  - "arn:aws:iam::*:role/fs-*-manager-role"
                 Condition:
                   StringEquals:
                     iam:PassedToService: lambda.amazonaws.com
+              - Effect: Allow
+                Action: 
+                  - "elasticfilesystem:DeleteAccessPoint"
+                Resource: "arn:aws:elasticfilesystem:*:*:access-point/*"
+                Condition:
+                  StringEquals:
+                    aws:ResourceTag/Name: "simple-file-manager-access-point"
+              - Effect: Allow
+                Action:
+                  - "iam:DetachRolePolicy"
+                  - "iam:AttachRolePolicy"
+                  - "iam:DeleteRole"
+                Resource: "arn:aws:iam::*:role/fs-*-manager-role"
+              - Effect: Allow
+                Action:
+                  - "lambda:InvokeFunction"
+                  - "lambda:GetFunction"
+                  - "lambda:DeleteFunction"
+                Resource: "arn:aws:lambda:*:*:function:fs-*-manager-lambda"
 
   # File Manager API stack
   EFSFileManagerAPI:

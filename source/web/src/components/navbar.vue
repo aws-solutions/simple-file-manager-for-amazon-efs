@@ -2,7 +2,7 @@
   <div>
     <b-navbar type="dark" variant="info">
         <b-navbar-nav>
-            <b-navbar-brand class='name' to='/'>Serverless File Manager</b-navbar-brand>
+            <b-navbar-brand class='name' to='/'>Simple File Manager</b-navbar-brand>
         </b-navbar-nav>
         <b-navbar-nav class="ml-auto">
           <amplify-sign-out class="signout" v-if="signedIn"></amplify-sign-out>

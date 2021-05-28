@@ -5,6 +5,7 @@ import Home from '@/routes/Home.vue'
 import Configure from '@/routes/Configure.vue'
 import Filesystem from '@/routes/Filesystem.vue'
 import Login from '@/routes/Login.vue'
+import Details from '@/routes/Details.vue'
 
 Vue.use(VueRouter);
 
@@ -34,6 +35,12 @@ const router = new VueRouter({
       path: '/',
       name: 'home',
       component: Home,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/details/:id',
+      name: 'details',
+      component: Details,
       meta: { requiresAuth: true }
     }
 ]
