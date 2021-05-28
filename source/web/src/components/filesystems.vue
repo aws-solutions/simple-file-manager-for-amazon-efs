@@ -11,7 +11,7 @@
         </template>
         <template v-slot:cell(managed)="data">
             <div v-if="data.value === true">
-                <p>{{data.value}}</p>
+                <a :href="`/details/${data.item.file_system_id}`">{{ data.value }}</a>
             </div>
             <div v-else-if="data.value === 'Creating'">
                 <b-link href="/" v-b-tooltip.hover title="Lambda creation can take several minutes. Click to refresh.">{{data.value}}</b-link>

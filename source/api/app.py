@@ -1,5 +1,5 @@
+import re
 import boto3
-import base64
 import botocore
 import os
 import json
@@ -53,6 +53,12 @@ def create_filesystem_access_point(filesystem_id, uid, gid, path):
     try:
         response = efs.create_access_point(
         FileSystemId=filesystem_id,
+        Tags=[
+            {
+                'Key': 'Name',
+                'Value': 'simple-file-manager-access-point'
+            },
+        ],
         PosixUser={
             'Uid': uid,
             'Gid': gid
@@ -76,13 +82,37 @@ def create_filesystem_access_point(filesystem_id, uid, gid, path):
 
 
 def delete_access_point(access_point_arn):
-    # TODO: Look into why this function is not working, causing a minor bug
     try:
         efs.delete_access_point(
             AccessPointId=access_point_arn)
     except botocore.exceptions.ClientError as error:
         app.log.error(error)
         raise BadRequestError(error)
+
+
+def get_access_point(filesystem_id):
+    try:
+        response = efs.describe_access_points(
+            FileSystemId=filesystem_id
+        )
+    except botocore.exceptions.ClientError as error:
+        raise Exception(error)
+    else:
+        access_point_id = ''
+        access_points = response['AccessPoints']
+
+        for access_point in access_points:
+            tags = access_point['Tags']
+            for tag in tags:
+                key = tag['Key']
+                if key == 'Name':
+                    if tag['Value'] == 'simple-file-manager-access-point':
+                        tmp_access_point_id = access_point['AccessPointId']
+                        access_point_id = tmp_access_point_id
+        if access_point_id == '':
+            raise Exception('No file manager access point found')
+        else:
+            return access_point_id
 
 
 def format_filesystem_response(filesystem):
@@ -130,7 +160,7 @@ def create_function_zip():
     return code
 
 
-def create_function_role(filesystem_name):
+def create_function_role(filesystem_id):
     trust_policy = {
         "Version": "2012-10-17",
         "Statement": [
@@ -145,9 +175,9 @@ def create_function_role(filesystem_name):
         ]
     }
 
-    role_name = f'{filesystem_name}-manager-role'
+    role_name = f'{filesystem_id}-manager-role'
     path = '/'
-    description = f'IAM Role for filesystem {filesystem_name} manager lambda'
+    description = f'IAM Role for filesystem {filesystem_id} manager lambda'
 
     # TODO: Add IAM resource tags
     try:
@@ -175,6 +205,29 @@ def create_function_role(filesystem_name):
     
     return role_arn
 
+def delete_function_role(filesystem_id):
+    role_name = f'{filesystem_id}-manager-role'
+
+    try:
+        iam.detach_role_policy(
+            RoleName=role_name,
+            PolicyArn='arn:aws:iam::aws:policy/AmazonElasticFileSystemClientReadWriteAccess'
+        )
+        iam.detach_role_policy(
+            RoleName=role_name,
+            PolicyArn='arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+        )
+        iam.detach_role_policy(
+            RoleName=role_name,
+            PolicyArn='arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole'
+        )
+        response = iam.delete_role(
+            RoleName=role_name
+        )
+    except botocore.exceptions.ClientError as error:
+        raise Exception(error)
+    else:
+        return response
 
 def create_function(filesystem_id, access_point_arn, vpc):
     code = create_function_zip()
@@ -195,15 +248,6 @@ def create_function(filesystem_id, access_point_arn, vpc):
             MemorySize=512,
             Publish=True,
             VpcConfig=vpc,
-            # TODO: Add tags to identify this is managed by the file system manager app
-            # Environment={
-            #     'Variables': {
-            #         'string': 'string'
-            #     }
-            # },
-            # Tags={
-            #     'string': 'string'
-            # },
             FileSystemConfigs=[
                 {
                     'Arn': access_point_arn,
@@ -216,6 +260,15 @@ def create_function(filesystem_id, access_point_arn, vpc):
     else:
         return response
 
+def delete_function(filesystem_id):
+    try:
+        response = serverless.delete_function(
+            FunctionName='{filesystem}-manager-lambda'.format(filesystem=filesystem_id)
+        )
+    except botocore.exceptions.ClientError as error:
+        raise Exception(error)
+    else:
+        return response
 
 def has_manager_lambda(filesystem_id):
     try:
@@ -304,6 +357,7 @@ def get_netinfo_for_filesystem(filesystem_id):
 
     return netinfo
 
+
 @app.route('/filesystems/{filesystem_id}/lambda', methods=['POST'], cors=True, authorizer=authorizer)
 def create_filesystem_lambda(filesystem_id):
     request = app.current_request
@@ -342,6 +396,24 @@ def create_filesystem_lambda(filesystem_id):
         raise ChaliceViewError('Check API Logs')
     else:
         return response
+
+
+@app.route('/filesystems/{filesystem_id}/lambda', methods=['DELETE'], cors=True, authorizer=authorizer)
+def delete_filesystem_lambda(filesystem_id):
+    file_manager_lambda = has_manager_lambda(filesystem_id)
+    if file_manager_lambda['Status'] is True and file_manager_lambda['Message'] == 'Active':
+        try:
+            delete_lambda = delete_function(filesystem_id)
+            app.log.info(delete_lambda)
+            access_point_id = get_access_point(filesystem_id)
+            delete_ap = delete_access_point(access_point_id)
+            app.log.info(delete_ap)
+            delete_role = delete_function_role(filesystem_id)
+            app.log.info(delete_role)
+        except Exception as error:
+            raise ChaliceViewError(error)
+    else:
+        raise BadRequestError('No valid file manager lambda for this filesystem')
 
 
 @app.route('/objects/{filesystem_id}/upload', methods=["POST"], cors=True, authorizer=authorizer)
