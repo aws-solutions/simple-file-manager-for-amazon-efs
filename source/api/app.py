@@ -5,7 +5,6 @@ import os
 import json
 import logging
 import time
-import zipfile
 from botocore.config import Config
 from chalice import Chalice, Response, ChaliceViewError, BadRequestError, UnauthorizedError, ForbiddenError, NotFoundError, ConflictError, TooManyRequestsError, IAMAuthorizer
 
@@ -14,11 +13,12 @@ from chalice import Chalice, Response, ChaliceViewError, BadRequestError, Unauth
 
 app = Chalice(app_name='api')
 app.log.setLevel(logging.DEBUG)
-efs_lambda = os.path.join(
-    os.path.dirname(__file__), 'chalicelib', 'efs_lambda.py')
+template_path = os.path.join(
+    os.path.dirname(__file__), 'chalicelib', 'file-manager-ap-lambda.template')
 
 sfm_config = json.loads(os.environ['botoConfig'])
 config = Config(**sfm_config)
+stack_prefix = os.environ['stackPrefix']
 
 # Cognito resources
 # From cloudformation stack
@@ -29,7 +29,7 @@ authorizer = IAMAuthorizer()
 
 efs = boto3.client('efs', config=config)
 serverless = boto3.client('lambda', config=config)
-iam = boto3.client('iam', config=config)
+cfn = boto3.client('cloudformation', config=config)
 
 
 # Helper functions
@@ -49,72 +49,6 @@ def proxy_operation_to_efs_lambda(filesystem_id, event):
         return response
 
 
-def create_filesystem_access_point(filesystem_id, uid, gid, path):
-    try:
-        response = efs.create_access_point(
-        FileSystemId=filesystem_id,
-        Tags=[
-            {
-                'Key': 'Name',
-                'Value': 'simple-file-manager-access-point'
-            },
-        ],
-        PosixUser={
-            'Uid': uid,
-            'Gid': gid
-        },
-        RootDirectory={
-            'Path': path,
-            'CreationInfo': {
-                'OwnerUid': uid,
-                'OwnerGid': gid,
-                'Permissions': '777'
-            }
-        }
-    )
-    except botocore.exceptions.ClientError as error:
-        return ChaliceViewError(error)
-    else:
-        access_point_arn = response['AccessPointArn']
-        access_point_id = response['AccessPointId']
-        access_point = {"access_point_arn": access_point_arn, "access_point_id": access_point_id}
-        return access_point
-
-
-def delete_access_point(access_point_arn):
-    try:
-        efs.delete_access_point(
-            AccessPointId=access_point_arn)
-    except botocore.exceptions.ClientError as error:
-        app.log.error(error)
-        raise BadRequestError(error)
-
-
-def get_access_point(filesystem_id):
-    try:
-        response = efs.describe_access_points(
-            FileSystemId=filesystem_id
-        )
-    except botocore.exceptions.ClientError as error:
-        raise Exception(error)
-    else:
-        access_point_id = ''
-        access_points = response['AccessPoints']
-
-        for access_point in access_points:
-            tags = access_point['Tags']
-            for tag in tags:
-                key = tag['Key']
-                if key == 'Name':
-                    if tag['Value'] == 'simple-file-manager-access-point':
-                        tmp_access_point_id = access_point['AccessPointId']
-                        access_point_id = tmp_access_point_id
-        if access_point_id == '':
-            raise Exception('No file manager access point found')
-        else:
-            return access_point_id
-
-
 def format_filesystem_response(filesystem):
     filesystem_id = filesystem['FileSystemId']
     new_filesystem_object = dict()
@@ -124,7 +58,7 @@ def format_filesystem_response(filesystem):
     except KeyError:
         pass
     
-    is_managed = has_manager_lambda(filesystem_id)
+    stack_status = describe_manager_stack(filesystem_id)
 
     lifecycle_state = filesystem['LifeCycleState']
     # TODO: BUG - Serialize datetime object to json properly
@@ -134,13 +68,14 @@ def format_filesystem_response(filesystem):
 
     #creation_time = filesystem['CreationTime']
 
-    if is_managed["Status"] is True:
-        if is_managed["Message"] == "Active":
-            new_filesystem_object["managed"] = True
-        else:
-            new_filesystem_object["managed"] = "Creating"
-    else:
+    if stack_status['Stacks'][0]['StackStatus'] == False:
         new_filesystem_object["managed"] = False
+    elif stack_status['Stacks'][0]['StackStatus'] == 'DELETE_IN_PROGRESS':
+        new_filesystem_object["managed"] = "Deleting"
+    elif stack_status['Stacks'][0]['StackStatus'] == 'CREATE_IN_PROGRESS':
+        new_filesystem_object["managed"] = "Creating"
+    elif stack_status['Stacks'][0]['StackStatus'] == 'CREATE_COMPLETE':
+        new_filesystem_object["managed"] = True
     
     new_filesystem_object["file_system_id"] = filesystem_id
     new_filesystem_object["lifecycle_state"] = lifecycle_state
@@ -150,147 +85,89 @@ def format_filesystem_response(filesystem):
     return new_filesystem_object
 
 
-def create_function_zip():
-    # TODO: Should this be a unique name / path based on give filesystem?
-    zip_path = "/tmp/lambda.zip"
-    with zipfile.ZipFile(zip_path, 'w') as z:
-        z.write(efs_lambda)
-    with open(zip_path, 'rb') as f:
-        code = f.read()
-    return code
+def read_template_file():
+    with open(template_path, 'r') as f:
+        template = f.read()
+    return template
 
 
-def create_function_role(filesystem_id):
-    trust_policy = {
-        "Version": "2012-10-17",
-        "Statement": [
-            {
-                "Sid": "",
-                "Effect": "Allow",
-                "Principal": {
-                    "Service": "lambda.amazonaws.com"
-                },
-                "Action": "sts:AssumeRole"
+def describe_manager_stack(filesystem_id):
+    stack_name = '{prefix}-ManagedResources-{filesystem}'.format(prefix=stack_prefix, filesystem=filesystem_id)
+    try:
+        response = cfn.describe_stacks(
+            StackName=stack_name,
+        )
+    except botocore.exceptions.ClientError as error:
+        app.log.error(error)
+        if error.response['Error']['Code'] == 'ValidationError':
+            return {
+                'Stacks': [{
+                    'StackStatus': False
+                }]
             }
-        ]
-    }
-
-    role_name = f'{filesystem_id}-manager-role'
-    path = '/'
-    description = f'IAM Role for filesystem {filesystem_id} manager lambda'
-
-    # TODO: Add IAM resource tags
-    try:
-        role_response = iam.create_role(
-            Path=path,
-            RoleName=role_name,
-            AssumeRolePolicyDocument=json.dumps(trust_policy),
-            Description=description,
-            MaxSessionDuration=3600
-        )
-    except Exception as e:
-        app.log.debug(e)
-        return ChaliceViewError(e)
-    
-
-    iam.attach_role_policy(RoleName=role_name,
-                           PolicyArn='arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole')
-    iam.attach_role_policy(RoleName=role_name,
-                           PolicyArn='arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole')
-    iam.attach_role_policy(RoleName=role_name,
-                           PolicyArn='arn:aws:iam::aws:policy/AmazonElasticFileSystemClientReadWriteAccess')
-    
-    
-    role_arn = str(role_response['Role']['Arn'])
-    
-    return role_arn
-
-def delete_function_role(filesystem_id):
-    role_name = f'{filesystem_id}-manager-role'
-
-    try:
-        iam.detach_role_policy(
-            RoleName=role_name,
-            PolicyArn='arn:aws:iam::aws:policy/AmazonElasticFileSystemClientReadWriteAccess'
-        )
-        iam.detach_role_policy(
-            RoleName=role_name,
-            PolicyArn='arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
-        )
-        iam.detach_role_policy(
-            RoleName=role_name,
-            PolicyArn='arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole'
-        )
-        response = iam.delete_role(
-            RoleName=role_name
-        )
-    except botocore.exceptions.ClientError as error:
-        raise Exception(error)
+        else:
+            raise ChaliceViewError(error)
     else:
         return response
 
-def create_function(filesystem_id, access_point_arn, vpc):
-    code = create_function_zip()
-    role = create_function_role(filesystem_id)
-    # TODO: Add retry logic instead of relying on sleep
-    time.sleep(15)
+
+def delete_manager_stack(filesystem_id):
+    stack_name = '{prefix}-ManagedResources-{filesystem}'.format(prefix=stack_prefix, filesystem=filesystem_id)
     try:
-        response = serverless.create_function(
-            FunctionName='{filesystem}-manager-lambda'.format(filesystem=filesystem_id),
-            Runtime='python3.8',
-            Role=role,
-            Handler='var/task/chalicelib/efs_lambda.lambda_handler',
-            Code={
-                'ZipFile': code
-            },
-            Description='Lambda function to process file manager operations for filesystem: {filesystem}'.format(filesystem=filesystem_id),
-            Timeout=60,
-            MemorySize=512,
-            Publish=True,
-            VpcConfig=vpc,
-            FileSystemConfigs=[
+        response = cfn.delete_stack(
+            StackName=stack_name,
+        )
+    except botocore.exceptions.ClientError as error:
+        app.log.error(error)
+        raise ChaliceViewError(error)
+    else:
+        return response
+
+
+def create_manager_stack(filesystem_id, uid, gid, path, subnet_ids, security_groups):
+    stack_name = '{prefix}-ManagedResources-{filesystem}'.format(prefix=stack_prefix, filesystem=filesystem_id)
+    template_body = read_template_file()
+    try:
+        response = cfn.create_stack(
+            StackName=stack_name,
+            TemplateBody=template_body,
+            Parameters=[
                 {
-                    'Arn': access_point_arn,
-                    'LocalMountPath': '/mnt/efs'
+                    'ParameterKey': 'FileSystemId',
+                    'ParameterValue': filesystem_id,
                 },
-            ]
+                {
+                    'ParameterKey': 'PosixUserUid',
+                    'ParameterValue': uid,
+                },
+                {
+                    'ParameterKey': 'PosixUserGid',
+                    'ParameterValue': gid,
+                },
+                {
+                    'ParameterKey': 'RootDirectoryPath',
+                    'ParameterValue': path,
+                },
+                {
+                    'ParameterKey': 'VpcConfigSgId',
+                    'ParameterValue': security_groups[0],
+                },
+                {
+                    'ParameterKey': 'VpcConfigSubnetId',
+                    'ParameterValue': subnet_ids[0],
+                },
+            ],
+            TimeoutInMinutes=15,
+            Capabilities=[
+                'CAPABILITY_NAMED_IAM',
+            ],
+            OnFailure='DELETE',
         )
     except botocore.exceptions.ClientError as error:
-        raise Exception(error)
+        app.log.error(error)
+        raise ChaliceViewError(error)
     else:
         return response
-
-def delete_function(filesystem_id):
-    try:
-        response = serverless.delete_function(
-            FunctionName='{filesystem}-manager-lambda'.format(filesystem=filesystem_id)
-        )
-    except botocore.exceptions.ClientError as error:
-        raise Exception(error)
-    else:
-        return response
-
-def has_manager_lambda(filesystem_id):
-    try:
-        response = serverless.get_function(
-            FunctionName='{filesystem}-manager-lambda'.format(filesystem=filesystem_id)
-        )
-    except botocore.exceptions.ClientError as error:
-        if error.response['Error']['Code'] == 'ResourceNotFoundException':
-            return {"Status": False}
-        else:
-            app.log.error(error)
-            return {"Status": False}
-    else:
-        function_state = response['Configuration']['State']
-        if function_state == 'Active':
-            return {"Status": True, "Message": "Active"}
-
-        elif function_state == 'Pending':
-            return {"Status": True, "Message": "Creating"}
-
-        else:
-            return {"Status": False}
 
 
 # Routes
@@ -310,8 +187,13 @@ def list_filesystems():
         filesystems = response['FileSystems']
         formatted_filesystems = []
         for filesystem in filesystems:
-            formatted = format_filesystem_response(filesystem)
-            formatted_filesystems.append(formatted)
+            try:
+                formatted = format_filesystem_response(filesystem)
+            except botocore.exceptions.ClientError as error:
+                app.log.error(error)
+                raise ChaliceViewError("Check API logs")
+            else:
+                formatted_filesystems.append(formatted)
         return formatted_filesystems
 
 
@@ -366,33 +248,18 @@ def create_filesystem_lambda(filesystem_id):
     try:
         subnet_ids = json_body['subnetIds']
         security_groups = json_body['securityGroups']
-        uid = int(json_body['uid'])
-        gid = int(json_body['gid'])
+        uid = json_body['uid']
+        gid = json_body['gid']
         path = json_body['path']
     except KeyError as error:
         app.log.error(error)
         raise BadRequestError("Check API logs")
-    else:
-        vpc_config = {
-            'SubnetIds': subnet_ids,
-            'SecurityGroupIds': security_groups
-        }
 
     try:
-        access_point = create_filesystem_access_point(filesystem_id, uid, gid, path)
+        response = create_manager_stack(filesystem_id, uid, gid, path, subnet_ids, security_groups)
     except Exception as error:
         app.log.error(error)
-        raise ChaliceViewError('Check API Logs')
-
-    # TODO: Add retry logic instead of relying on sleep
-    time.sleep(10)
-
-    try:
-        response = create_function(filesystem_id, access_point["access_point_arn"], vpc_config)
-    except Exception as error:
-        app.log.error(error)
-        app.log.debug('Failed to create lambda, deleting access point')
-        delete_access_point(access_point["access_point_id"])
+        app.log.debug('Failed to create stack, deleting it.')
         raise ChaliceViewError('Check API Logs')
     else:
         return response
@@ -400,20 +267,15 @@ def create_filesystem_lambda(filesystem_id):
 
 @app.route('/filesystems/{filesystem_id}/lambda', methods=['DELETE'], cors=True, authorizer=authorizer)
 def delete_filesystem_lambda(filesystem_id):
-    file_manager_lambda = has_manager_lambda(filesystem_id)
-    if file_manager_lambda['Status'] is True and file_manager_lambda['Message'] == 'Active':
+    stack_status = describe_manager_stack(filesystem_id)
+    if stack_status['Stacks'][0]['StackStatus'] == 'CREATE_COMPLETE':
         try:
-            delete_lambda = delete_function(filesystem_id)
-            app.log.info(delete_lambda)
-            access_point_id = get_access_point(filesystem_id)
-            delete_ap = delete_access_point(access_point_id)
-            app.log.info(delete_ap)
-            delete_role = delete_function_role(filesystem_id)
-            app.log.info(delete_role)
+            delete_stack = delete_manager_stack(filesystem_id)
+            app.log.info(delete_stack)
         except Exception as error:
             raise ChaliceViewError(error)
     else:
-        raise BadRequestError('No valid file manager lambda for this filesystem')
+        raise BadRequestError('No valid managed stack for this filesystem')
 
 
 @app.route('/objects/{filesystem_id}/upload', methods=["POST"], cors=True, authorizer=authorizer)

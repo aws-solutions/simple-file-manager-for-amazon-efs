@@ -85,6 +85,11 @@ Resources:
                     iam:PassedToService: lambda.amazonaws.com
               - Effect: Allow
                 Action: 
+                  - "iam:GetRole"
+                Resource:
+                  - "arn:aws:iam::*:role/fs-*-manager-role"
+              - Effect: Allow
+                Action:
                   - "elasticfilesystem:DeleteAccessPoint"
                 Resource: "arn:aws:elasticfilesystem:*:*:access-point/*"
                 Condition:
@@ -102,6 +107,12 @@ Resources:
                   - "lambda:GetFunction"
                   - "lambda:DeleteFunction"
                 Resource: "arn:aws:lambda:*:*:function:fs-*-manager-lambda"
+              - Effect: Allow
+                Action:
+                  - "cloudformation:CreateStack"
+                  - "cloudformation:DeleteStack"
+                  - "cloudformation:DescribeStacks"
+                Resource: "arn:aws:cloudformation:*:*:stack/*"
 
   # File Manager API stack
   EFSFileManagerAPI:
@@ -131,6 +142,7 @@ Resources:
             "filemanagerapi.zip",
             ],
           ]
+        stackPrefix: !Sub "${AWS::StackName}"
 
   # Deploy Authentication stack.
   EFSFileAuthentication:
