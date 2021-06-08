@@ -153,8 +153,8 @@ def create_manager_stack(filesystem_id, uid, gid, path, subnet_ids, security_gro
                     'ParameterValue': ','.join(security_groups),
                 },
                 {
-                    'ParameterKey': 'VpcConfigSubnetId',
-                    'ParameterValue': subnet_ids[0],
+                    'ParameterKey': 'VpcConfigSubnetIds',
+                    'ParameterValue': ','.join(subnet_ids),
                 },
             ],
             TimeoutInMinutes=15,

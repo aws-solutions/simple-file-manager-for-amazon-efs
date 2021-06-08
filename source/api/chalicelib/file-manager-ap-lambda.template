@@ -12,7 +12,7 @@ Parameters:
     Type: String
   VpcConfigSgIds:
     Type: String
-  VpcConfigSubnetId:
+  VpcConfigSubnetIds:
     Type: String
 
 Resources:
@@ -244,4 +244,6 @@ Resources:
             - ","
             - !Ref VpcConfigSgIds
         SubnetIds:
-          - !Ref VpcConfigSubnetId
+          Fn::Split:
+            - ","
+            - !Ref VpcConfigSubnetIds
