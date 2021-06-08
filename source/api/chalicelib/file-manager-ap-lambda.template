@@ -10,7 +10,7 @@ Parameters:
     Type: String
   RootDirectoryPath:
     Type: String
-  VpcConfigSgId:
+  VpcConfigSgIds:
     Type: String
   VpcConfigSubnetId:
     Type: String
@@ -240,6 +240,8 @@ Resources:
       Timeout: 60
       VpcConfig:
         SecurityGroupIds:
-          - !Ref VpcConfigSgId
+          Fn::Split:
+            - ","
+            - !Ref VpcConfigSgIds
         SubnetIds:
           - !Ref VpcConfigSubnetId
