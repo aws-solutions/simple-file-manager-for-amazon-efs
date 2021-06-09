@@ -61,6 +61,38 @@ The cost to deploy and use the solution is minimal due to its serverless archite
 
 ___
 
+
+## Running unit tests for customization
+* Clone the repository, then make the desired code changes
+* Next, run unit tests to make sure added customization passes the tests
+```
+cd ./deployment
+chmod +x ./run-unit-tests.sh  \n
+./run-unit-tests.sh \n
+```
+
+## Building distributable for customization
+* Configure the bucket name of your target Amazon S3 distribution bucket
+
+_Note:_ You would have to create an S3 bucket with the prefix 'my-bucket-name-<aws_region>'; aws_region is where you are testing the customized solution. Also, the assets in bucket should be publicly accessible.
+
+* Now build the distributable:
+For example if you want to deploy in us-east-1 make sure you have a bucket that is named BUCKET_BASE_NAME-region where region is us-east-1 or which ever region you are wanting to deploy your deployment assets to. Version number can be changed to what ever you want, I put 1.0.0 as a placeholder. 
+
+This script will use the default AWS profile in your AWS CLI to upload assets to the bucket you provide. 
+_Note:_ you must have the AWS Command Line Interface installed.
+```
+chmod +x ./build-s3-dist.sh \n
+./build-s3-dist.sh --template-bucket BUCKET_BASE_NAME-us-east-1 --code-bucket BUCKET_BASE_NAME --version 1.0.0 --region us-east-1 \n
+```
+
+* Get the link of the solution template uploaded to your Amazon S3 bucket.
+The main template is called efs-file-manager.template
+
+* Deploy the solution to your account by launching a new AWS CloudFormation stack using the link of the solution template in Amazon S3.
+
+
+
 Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
 Licensed under the Apache License Version 2.0 (the "License"). You may not use this file except in compliance with the License. A copy of the License is located at
@@ -68,3 +100,4 @@ Licensed under the Apache License Version 2.0 (the "License"). You may not use t
     http://www.apache.org/licenses/
 
 or in the "license" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and limitations under the License.
+
