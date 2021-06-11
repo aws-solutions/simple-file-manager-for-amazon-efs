@@ -195,6 +195,9 @@ Resources:
           ForwardedValues:
             QueryString: false
           ViewerProtocolPolicy: redirect-to-https
+          FunctionAssociations:
+            - EventType: "viewer-response"
+              FunctionARN: !GetAtt EFSFileSimpleWebsiteDistributionFunction.FunctionMetadata.FunctionARN
         DefaultRootObject: "index.html"
         CustomErrorResponses:
           - ErrorCode: 404
@@ -219,18 +222,18 @@ Resources:
               var headers = response.headers;
 
               // Set HTTP security headers
-              // Since JavaScript doesn't allow for hyphens in variable names, we use the dict["key"] notation 
               headers['strict-transport-security'] = { value: 'max-age=63072000; includeSubdomains; preload'}; 
               headers['content-security-policy'] = { value: "default-src 'none'; img-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'"}; 
               headers['x-content-type-options'] = { value: 'nosniff'}; 
               headers['x-frame-options'] = {value: 'DENY'}; 
               headers['x-xss-protection'] = {value: '1; mode=block'}; 
 
-              // Return the response to viewers 
               return response;
           }
-        FunctionConfig: FunctionConfig
-        Name: !Sub "${AWS::StackName}-WebsiteDistributionFunction"
+      Name: !Sub "${AWS::StackName}-CfFunction"
+      FunctionConfig:
+        Comment: CloudFront Function to add security headers to objects
+        Runtime: cloudfront-js-1.0
 
   WebsiteHelperRole:
     Type: AWS::IAM::Role
