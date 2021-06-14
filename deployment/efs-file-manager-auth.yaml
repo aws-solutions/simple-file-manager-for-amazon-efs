@@ -36,6 +36,7 @@ Resources:
     Type: AWS::Cognito::UserPoolClient
     Properties:
       UserPoolId: !Ref SimpleFileManagerUserPool
+      PreventUserExistenceErrors: "ENABLED"
 
     # Service - cognito / security infrastructure
 
