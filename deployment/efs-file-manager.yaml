@@ -18,8 +18,8 @@ Mappings:
     General:
       GlobalS3Bucket: "%%GLOBAL_BUCKET_NAME%%"
       RegionalS3Bucket: "%%REGIONAL_BUCKET_NAME%%"
-      CodeKeyPrefix: "efs_file_manager/%%VERSION%%"
-      TemplateKeyPrefix: "efs_file_manager/%%VERSION%%"
+      CodeKeyPrefix: "simple-file-manager-for-amazon-efs/%%VERSION%%"
+      TemplateKeyPrefix: "simple-file-manager-for-amazon-efs/%%VERSION%%"
 
 Resources:
   # File Manager API Handler IAM Role

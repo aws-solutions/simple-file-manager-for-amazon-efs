@@ -325,11 +325,11 @@ if [ "$global_bucket" != "solutions-features-reference" ] && [ "$global_bucket" 
     echo "------------------------------------------------------------------------------"
     cd "$build_dir"/ || exit 1
     echo "Copying the prepared distribution to:"
-    echo "s3://$global_bucket/efs_file_manager/$version/"
-    echo "s3://${regional_bucket}-${region}/efs_file_manager/$version/"
+    echo "s3://$global_bucket/simple-file-manager-for-amazon-efs/$version/"
+    echo "s3://${regional_bucket}-${region}/simple-file-manager-for-amazon-efs/$version/"
     set -x
-    aws s3 sync $global_dist_dir s3://$global_bucket/efs_file_manager/$version/
-    aws s3 sync $regional_dist_dir s3://${regional_bucket}-${region}/efs_file_manager/$version/
+    aws s3 sync $global_dist_dir s3://$global_bucket/simple-file-manager-for-amazon-efs/$version/
+    aws s3 sync $regional_dist_dir s3://${regional_bucket}-${region}/simple-file-manager-for-amazon-efs/$version/
     set +x
 
     echo "------------------------------------------------------------------------------"
@@ -338,7 +338,7 @@ if [ "$global_bucket" != "solutions-features-reference" ] && [ "$global_bucket" 
 
     echo ""
     echo "Template to deploy:"
-    echo "TEMPLATE='"https://"$global_bucket"."$s3domain"/efs_file_manager/"$version"/efs-file-manager.template"'"
+    echo "TEMPLATE='"https://"$global_bucket"."$s3domain"/simple-file-manager-for-amazon-efs/"$version"/efs-file-manager.template"'"
 fi 
 
 cleanup
