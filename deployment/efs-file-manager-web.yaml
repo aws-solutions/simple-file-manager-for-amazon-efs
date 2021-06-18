@@ -17,7 +17,7 @@ Mappings:
       S3Bucket: "%%REGIONAL_BUCKET_NAME%%"
       CodeKeyPrefix: "simple-file-manager-for-amazon-efs/%%VERSION%%"
       TemplateKeyPrefix: "simple-file-manager-for-amazon-efs/%%VERSION%%"
-      WebsitePrefix: "simple-file-manager-for-amazon-efs/%%VERSION%%/web"
+      WebsitePrefix: "simple-file-manager-for-amazon-efs/%%VERSION%%/website"
 
 Resources:
   WebsiteBucketNameFunction:
