@@ -316,31 +316,30 @@ echo "Cleaning up website helper function"
 rm -rf ./dist
 
 
+# Skip copy dist to S3 if building for solution builder because
+# that pipeline takes care of copying the dist in another script.
+if [ "$global_bucket" != "solutions-features-reference" ] && [ "$global_bucket" != "solutions-reference" ] && [ "$global_bucket" != "solutions-test-reference" ]; then
 
+    echo "------------------------------------------------------------------------------"
+    echo "Copy dist to S3"
+    echo "------------------------------------------------------------------------------"
+    cd "$build_dir"/ || exit 1
+    echo "Copying the prepared distribution to:"
+    echo "s3://$global_bucket/efs_file_manager/$version/"
+    echo "s3://${regional_bucket}-${region}/efs_file_manager/$version/"
+    set -x
+    aws s3 sync $global_dist_dir s3://$global_bucket/efs_file_manager/$version/
+    aws s3 sync $regional_dist_dir s3://${regional_bucket}-${region}/efs_file_manager/$version/
+    set +x
 
+    echo "------------------------------------------------------------------------------"
+    echo "S3 packaging complete"
+    echo "------------------------------------------------------------------------------"
 
-
-
-
-echo "------------------------------------------------------------------------------"
-echo "Copy dist to S3"
-echo "------------------------------------------------------------------------------"
-cd "$build_dir"/ || exit 1
-echo "Copying the prepared distribution to:"
-echo "s3://$global_bucket/efs_file_manager/$version/"
-echo "s3://${regional_bucket}-${region}/efs_file_manager/$version/"
-set -x
-aws s3 sync $global_dist_dir s3://$global_bucket/efs_file_manager/$version/
-aws s3 sync $regional_dist_dir s3://${regional_bucket}-${region}/efs_file_manager/$version/
-set +x
-
-echo "------------------------------------------------------------------------------"
-echo "S3 packaging complete"
-echo "------------------------------------------------------------------------------"
-
-echo ""
-echo "Template to deploy:"
-echo "TEMPLATE='"https://"$global_bucket"."$s3domain"/efs_file_manager/"$version"/efs-file-manager.template"'"
+    echo ""
+    echo "Template to deploy:"
+    echo "TEMPLATE='"https://"$global_bucket"."$s3domain"/efs_file_manager/"$version"/efs-file-manager.template"'"
+fi 
 
 cleanup
 echo "Done"
