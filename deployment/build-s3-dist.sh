@@ -296,21 +296,43 @@ npm install
 echo "Compiling the vue app"
 npm run build
 echo "Built demo webapp"
-# Remove old web
-rm -rf "$regional_dist_dir/web"
+# Remove old website
+rm -rf "$regional_dist_dir/website"
 # Now we have a dist directory in web that we can move to dist_dir
-mv "./dist/" "$regional_dist_dir/web"
+mv "./dist/" "$regional_dist_dir/website"
 
 
 echo "------------------------------------------------------------------------------"
-echo "Building Website CFN Helper Custom Resource VueJS"
+echo "Generate webapp manifest file"
+echo "------------------------------------------------------------------------------"
+# This manifest file contains a list of all the webapp files. It is necessary in
+# order to use the least privileges for deploying the webapp.
+#
+# Details: The website_helper.py Lambda function needs this list in order to copy
+# files from $regional_dist_dir/website to the SimpleFileManagerWebsiteBucket (see efs-file-manager-web.yaml).  Since the manifest file is computed during build
+# time, the website_helper.py Lambda can use that to figure out what files to copy
+# instead of doing a list bucket operation, which would require ListBucket permission.
+# Furthermore, the S3 bucket used to host AWS solutions (s3://solutions-reference)
+# disallows ListBucket access, so the only way to copy files from
+# s3://solutions-reference/simple-file-manager-for-amazon-efs/latest/website to
+# SimpleFileManagerWebsiteBucket is to use said manifest file.
+#
+cd $regional_dist_dir"/website/" || exit 1
+manifest=(`find . -type f | sed 's|^./||'`)
+manifest_json=$(IFS=,;printf "%s" "${manifest[*]}")
+echo "[\"$manifest_json\"]" | sed 's/,/","/g' > $helper_dir/webapp-manifest.json
+cat $helper_dir/webapp-manifest.json
+
+echo "------------------------------------------------------------------------------"
+echo "Build website helper function"
 echo "------------------------------------------------------------------------------"
 
 echo "Building website helper function"
 cd "$helper_dir" || exit 1
 [ -e dist ] && rm -r dist
 mkdir -p dist
-zip -q -g ./dist/websitehelper.zip ./website_helper.py
+zip -q -g ./dist/websitehelper.zip ./website_helper.py webapp-manifest.json
+
 cp "./dist/websitehelper.zip" "$regional_dist_dir/websitehelper.zip"
 echo "Cleaning up website helper function"
 rm -rf ./dist

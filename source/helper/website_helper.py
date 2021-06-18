@@ -98,22 +98,20 @@ def copy_source(event, context):
 
                 deployment_bucket = s3.Bucket(website_bucket)
 
-                objects = s3.Bucket(name=source_bucket).objects.filter(Prefix='{k}/'.format(k=source_key))
-
-                for s3_object in objects:
-                    old_key = s3_object.key
-                    LOGGER.info(old_key)
-                    try:
-                        new_key = old_key.split('web/')[1]
-                    # Only pickup items under the "web" prefix
-                    except IndexError:
-                        pass
-                    else:
-                        source = {"Bucket": source_bucket, "Key": old_key}
-                        deployment_bucket.copy(source, '{key}'.format(key=new_key))
-                        if replace_env_variables is True and new_key == "runtimeConfig.json":
+                with open('./webapp-manifest.json') as file:
+                    manifest = json.load(file)
+                    print('UPLOADING FILES::')
+                    for key in manifest:
+                        print('s3://'+source_bucket+'/'+source_key+'/'+key)
+                        copy_source = {
+                            'Bucket': source_bucket,
+                            'Key': source_key+'/'+key
+                        }
+                        s3.meta.client.copy(copy_source, website_bucket, key)
+                        if replace_env_variables is True and key == "runtimeConfig.json":
                             LOGGER.info("updating runtimeConfig.json")
-                            write_to_s3(event, context, website_bucket, new_key, json.dumps(new_variables))
+                            write_to_s3(event, context, website_bucket, key, json.dumps(new_variables))
+
         except Exception as e:
             LOGGER.info("Unable to copy website source code into the website bucket: {e}".format(e=e))
             send_response(event, context, "FAILED", {"Message": "Unexpected event received from CloudFormation"})
