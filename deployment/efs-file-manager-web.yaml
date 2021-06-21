@@ -195,9 +195,6 @@ Resources:
           ForwardedValues:
             QueryString: false
           ViewerProtocolPolicy: redirect-to-https
-          FunctionAssociations:
-            - EventType: "viewer-response"
-              FunctionARN: !GetAtt EFSFileSimpleWebsiteDistributionFunction.FunctionMetadata.FunctionARN
         DefaultRootObject: "index.html"
         CustomErrorResponses:
           - ErrorCode: 404
@@ -212,29 +209,150 @@ Resources:
         Enabled: true
         HttpVersion: "http2"
 
-    EFSFileSimpleWebsiteDistributionFunction:
-      Type: AWS::CloudFront::Function
-      Properties:
-        AutoPublish: true
-        FunctionCode: |
+  EFSFileSimpleWebsiteDistributionFunction:
+    Type: AWS::CloudFront::Function
+    Properties:
+      AutoPublish: true
+      Name: !Sub "${AWS::StackName}-CfFunction"
+      FunctionConfig:
+        Comment: CloudFront Function to add security headers to objects
+        Runtime: cloudfront-js-1.0
+      FunctionCode: !Sub 
+        - |
           function handler(event) {
               var response = event.response;
               var headers = response.headers;
 
-              // Set HTTP security headers
               headers['strict-transport-security'] = { value: 'max-age=63072000; includeSubdomains; preload'}; 
-              headers['content-security-policy'] = { value: "default-src 'none'; img-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'"}; 
+              headers['content-security-policy'] = { value: "default-src 'none'; img-src 'self' http://${CloudFrontDistribution}; script-src 'self' http://${CloudFrontDistribution}; style-src 'self' http://${CloudFrontDistribution}; connect-src 'self' http://${CloudFrontDistribution} ${ApiGatewayUrl} https://cognito-identity.${AwsRegion}.amazonaws.com; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"}; 
               headers['x-content-type-options'] = { value: 'nosniff'}; 
               headers['x-frame-options'] = {value: 'DENY'}; 
               headers['x-xss-protection'] = {value: '1; mode=block'}; 
 
               return response;
           }
-      Name: !Sub "${AWS::StackName}-CfFunction"
-      FunctionConfig:
-        Comment: CloudFront Function to add security headers to objects
-        Runtime: cloudfront-js-1.0
+        - CloudFrontDistribution: !GetAtt EFSFileSimpleWebsiteDistribution.DomainName
+          ApiGatewayUrl: !Ref FileManagerAPIEndpoint
+          AwsRegion: !Ref AWS::Region
 
+  EFSFileSimpleCfFunctionFixer:
+    Type: AWS::Lambda::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W92
+            reason: "ReservedConcurrentExecutions not needed since this function runs once when CloudFormation deploys"
+    Properties:
+      Code:
+        ZipFile: |
+          # This is needed because the boto3 version present in the Lambda Execution env doesn't have CloudFront Functions support yet
+          import sys
+          from pip._internal import main
+
+          main(['install', '-I', '-q', 'boto3', '--target', '/tmp/', '--no-cache-dir', '--disable-pip-version-check'])
+          sys.path.insert(0,'/tmp/')
+          
+          import boto3
+          import logging
+
+          import cfnresponse
+
+          logging.basicConfig(level=logging.INFO)
+
+          logger = logging.getLogger()
+          cf = boto3.client("cloudfront")
+
+
+          def handler(event, context):
+              print(event)
+              action = event["RequestType"]
+              distribution_id = event["ResourceProperties"]["CfDistributionId"]
+              function_arn = event["ResourceProperties"]["CfFunctionARN"]
+              distribution = None
+              try:
+                  distribution = cf.get_distribution_config(Id=distribution_id)
+              except Exception as exc:
+                  logger.error(exc)
+                  logger.error("Unable to describe distribution with id %s.", distribution_id)
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {}, "CustomResourcePhysicalID")
+
+              if action == "Create" or action == "Delete":
+                  if action == "Create":
+                    distribution["DistributionConfig"]["DefaultCacheBehavior"][
+                        "FunctionAssociations"
+                    ] = {
+                        "Quantity": 1,
+                        "Items": [{"FunctionARN": function_arn, "EventType": "viewer-response"}],
+                    }
+                  elif action == "Delete":
+                    distribution["DistributionConfig"]["DefaultCacheBehavior"][
+                        "FunctionAssociations"
+                    ] = { "Quantity": 0 }
+                  try:
+                      cf.update_distribution(
+                          DistributionConfig=distribution["DistributionConfig"],
+                          Id=distribution_id,
+                          IfMatch=distribution["ETag"],
+                      )
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {}, "CustomResourcePhysicalID")
+                  except Exception as exc:
+                      logger.error(exc)
+                      logger.error("Unable to describe distribution with id %s.", distribution_id, "CustomResourcePhysicalID")
+                      cfnresponse.send(event, context, cfnresponse.FAILED, {}, "CustomResourcePhysicalID")
+              elif action == "Update":
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {}, "CustomResourcePhysicalID")
+              else:
+                  logger.error('Action not supported.')
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {}, "CustomResourcePhysicalID")
+
+      Handler: index.handler
+      Runtime: python3.8
+      Role: !GetAtt EFSFileSimpleCfFunctionFixerExecutionRole.Arn
+
+  EFSFileSimpleCfFunctionFixerPermissions:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt EFSFileSimpleCfFunctionFixer.Arn
+      Principal: 'cloudformation.amazonaws.com'
+  EFSFileSimpleCfFunctionFixerExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: 
+                  !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*
+              - Effect: Allow
+                Action:
+                  - cloudfront:GetDistributionConfig
+                  - cloudfront:UpdateDistribution
+                Resource:
+                  !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/${EFSFileSimpleWebsiteDistribution.Id}
+  AssociateCfFuncToDistr:
+    Type: Custom::CustomResource
+    Properties:
+      ServiceToken: !GetAtt EFSFileSimpleCfFunctionFixer.Arn
+      CfDistributionId: !GetAtt EFSFileSimpleWebsiteDistribution.Id
+      CfFunctionARN: !GetAtt EFSFileSimpleWebsiteDistributionFunction.FunctionARN
+  
   WebsiteHelperRole:
     Type: AWS::IAM::Role
     Metadata:
