@@ -28,15 +28,15 @@
                 "rules_to_suppress": [
                 {
                     "id": "W89",
-                    "reason": "This Lambda function does not need to access any resource provisioned within a VPC."
+                    "reason": "This function does not need to be deployed in a VPC."
                 },
                 {
                     "id": "W58",
-                    "reason": "This Lambda function does not need to access any resource provisioned within a VPC."
+                    "reason": "Using a policy that allows write permission to CloudWatch Logs."
                 },
                 {
                     "id": "W92",
-                    "reason": "This Lambda function does not need to access any resource provisioned within a VPC."
+                    "reason": "Reserved Concurrency is not needed for this function."
                 }
                 ]
             }
