@@ -296,51 +296,72 @@ npm install
 echo "Compiling the vue app"
 npm run build
 echo "Built demo webapp"
-# Remove old web
-rm -rf "$regional_dist_dir/web"
+# Remove old website
+rm -rf "$regional_dist_dir/website"
 # Now we have a dist directory in web that we can move to dist_dir
-mv "./dist/" "$regional_dist_dir/web"
+mv "./dist/" "$regional_dist_dir/website"
 
 
 echo "------------------------------------------------------------------------------"
-echo "Building Website CFN Helper Custom Resource VueJS"
+echo "Generate webapp manifest file"
+echo "------------------------------------------------------------------------------"
+# This manifest file contains a list of all the webapp files. It is necessary in
+# order to use the least privileges for deploying the webapp.
+#
+# Details: The website_helper.py Lambda function needs this list in order to copy
+# files from $regional_dist_dir/website to the SimpleFileManagerWebsiteBucket (see efs-file-manager-web.yaml).  Since the manifest file is computed during build
+# time, the website_helper.py Lambda can use that to figure out what files to copy
+# instead of doing a list bucket operation, which would require ListBucket permission.
+# Furthermore, the S3 bucket used to host AWS solutions (s3://solutions-reference)
+# disallows ListBucket access, so the only way to copy files from
+# s3://solutions-reference/simple-file-manager-for-amazon-efs/latest/website to
+# SimpleFileManagerWebsiteBucket is to use said manifest file.
+#
+cd $regional_dist_dir"/website/" || exit 1
+manifest=(`find . -type f | sed 's|^./||'`)
+manifest_json=$(IFS=,;printf "%s" "${manifest[*]}")
+echo "[\"$manifest_json\"]" | sed 's/,/","/g' > $helper_dir/webapp-manifest.json
+cat $helper_dir/webapp-manifest.json
+
+echo "------------------------------------------------------------------------------"
+echo "Build website helper function"
 echo "------------------------------------------------------------------------------"
 
 echo "Building website helper function"
 cd "$helper_dir" || exit 1
 [ -e dist ] && rm -r dist
 mkdir -p dist
-zip -q -g ./dist/websitehelper.zip ./website_helper.py
+zip -q -g ./dist/websitehelper.zip ./website_helper.py webapp-manifest.json
+
 cp "./dist/websitehelper.zip" "$regional_dist_dir/websitehelper.zip"
 echo "Cleaning up website helper function"
 rm -rf ./dist
 
 
+# Skip copy dist to S3 if building for solution builder because
+# that pipeline takes care of copying the dist in another script.
+if [ "$global_bucket" != "solutions-features-reference" ] && [ "$global_bucket" != "solutions-reference" ] && [ "$global_bucket" != "solutions-test-reference" ]; then
 
+    echo "------------------------------------------------------------------------------"
+    echo "Copy dist to S3"
+    echo "------------------------------------------------------------------------------"
+    cd "$build_dir"/ || exit 1
+    echo "Copying the prepared distribution to:"
+    echo "s3://$global_bucket/simple-file-manager-for-amazon-efs/$version/"
+    echo "s3://${regional_bucket}-${region}/simple-file-manager-for-amazon-efs/$version/"
+    set -x
+    aws s3 sync $global_dist_dir s3://$global_bucket/simple-file-manager-for-amazon-efs/$version/
+    aws s3 sync $regional_dist_dir s3://${regional_bucket}-${region}/simple-file-manager-for-amazon-efs/$version/
+    set +x
 
+    echo "------------------------------------------------------------------------------"
+    echo "S3 packaging complete"
+    echo "------------------------------------------------------------------------------"
 
-
-
-
-echo "------------------------------------------------------------------------------"
-echo "Copy dist to S3"
-echo "------------------------------------------------------------------------------"
-cd "$build_dir"/ || exit 1
-echo "Copying the prepared distribution to:"
-echo "s3://$global_bucket/efs_file_manager/$version/"
-echo "s3://${regional_bucket}-${region}/efs_file_manager/$version/"
-set -x
-aws s3 sync $global_dist_dir s3://$global_bucket/efs_file_manager/$version/
-aws s3 sync $regional_dist_dir s3://${regional_bucket}-${region}/efs_file_manager/$version/
-set +x
-
-echo "------------------------------------------------------------------------------"
-echo "S3 packaging complete"
-echo "------------------------------------------------------------------------------"
-
-echo ""
-echo "Template to deploy:"
-echo "TEMPLATE='"https://"$global_bucket"."$s3domain"/efs_file_manager/"$version"/efs-file-manager.template"'"
+    echo ""
+    echo "Template to deploy:"
+    echo "TEMPLATE='"https://"$global_bucket"."$s3domain"/simple-file-manager-for-amazon-efs/"$version"/efs-file-manager.template"'"
+fi 
 
 cleanup
 echo "Done"

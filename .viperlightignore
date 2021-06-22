@@ -1,3 +1,11 @@
 ^dist/
 CODE_OF_CONDUCT.md:4
 CONTRIBUTING.md:50
+.github/workflows/nightly-workflow.yml:19
+.github/workflows/nightly-workflow.yml:18
+deployment/.idea/workspace.xml:73
+docs/assets/images/sfm_logo.svg:3
+source/api/.idea/workspace.xml:109
+deployment/efs-file-manager-auth.yaml:158
+deployment/efs-file-manager.yaml:74
+deployment/efs-file-manager.yaml:59

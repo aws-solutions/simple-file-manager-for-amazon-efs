@@ -23,6 +23,24 @@
   },
   "Resources": {
     "APIHandler": {
+        "Metadata": {
+            "cfn_nag": {
+                "rules_to_suppress": [
+                {
+                    "id": "W89",
+                    "reason": "This function does not need to be deployed in a VPC."
+                },
+                {
+                    "id": "W58",
+                    "reason": "Using a policy that allows write permission to CloudWatch Logs."
+                },
+                {
+                    "id": "W92",
+                    "reason": "Reserved Concurrency is not needed for this function."
+                }
+                ]
+            }
+        },
       "Properties": {
         "Runtime": "python3.8",
         "Role": {"Ref": "ApiHandlerIamRole"},
