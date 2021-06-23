@@ -79,7 +79,7 @@ Resources:
                 Action:
                   - "iam:PassRole"
                 Resource:
-                  - "arn:aws:iam::*:role/fs-*-manager-role"
+                  - !Sub "arn:aws:iam::*:role/${AWS::StackName}-fs-*-manager-role"
                 Condition:
                   StringEquals:
                     iam:PassedToService: lambda.amazonaws.com
@@ -87,7 +87,7 @@ Resources:
                 Action: 
                   - "iam:GetRole"
                 Resource:
-                  - "arn:aws:iam::*:role/fs-*-manager-role"
+                  - !Sub  "arn:aws:iam::*:role/${AWS::StackName}-fs-*-manager-role"
               - Effect: Allow
                 Action:
                   - "elasticfilesystem:DeleteAccessPoint"
@@ -100,13 +100,13 @@ Resources:
                   - "iam:DetachRolePolicy"
                   - "iam:AttachRolePolicy"
                   - "iam:DeleteRole"
-                Resource: "arn:aws:iam::*:role/fs-*-manager-role"
+                Resource: !Sub "arn:aws:iam::*:role/${AWS::StackName}-fs-*-manager-role"
               - Effect: Allow
                 Action:
                   - "lambda:InvokeFunction"
                   - "lambda:GetFunction"
                   - "lambda:DeleteFunction"
-                Resource: "arn:aws:lambda:*:*:function:fs-*-manager-lambda"
+                Resource: !Sub "arn:aws:lambda:*:*:function:${AWS::StackName}-EFSFileManager-fs-*-manager-lambda"
               - Effect: Allow
                 Action:
                   - "cloudformation:CreateStack"
