@@ -34,6 +34,17 @@
         },
         "CodeUri": {"Bucket": {"Ref": "DeploymentPackageBucket"}, "Key": {"Ref": "DeploymentPackageKey"}}
       }
+    },
+    "RestAPI": {
+      "Properties": {
+        "AccessLogSetting": {
+          "DestinationArn": {
+            "Fn::Sub": "arn:aws:logs:eu-west-1:${AWS::AccountId}:log-group:/aws/apigateway/${stackPrefix}-EFSFileManagerAPI-AccessLogs:*"
+          },
+          "Format": "{\"requestId\":\"$context.requestId\", \"ip\": \"$context.identity.sourceIp\", \"caller\":\"$context.identity.caller\", \"user\":\"$context.identity.user\", \"requestTime\":\"$context.requestTime\", \"httpMethod\":\"$context.httpMethod\", \"resourcePath\":\"$context.resourcePath\", \"status\":\"$context.status\", \"protocol\":\"$context.protocol\" \"responseLength\":\"$context.responseLength\"}"
+        },
+        "TracingEnabled": true
     }
   }
+}
 }

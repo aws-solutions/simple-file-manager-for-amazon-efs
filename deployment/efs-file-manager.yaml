@@ -113,7 +113,8 @@ Resources:
                   - "cloudformation:DeleteStack"
                   - "cloudformation:DescribeStacks"
                 Resource: "arn:aws:cloudformation:*:*:stack/*"
-
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
   # File Manager API stack
   EFSFileManagerAPI:
     Type: "AWS::CloudFormation::Stack"
