@@ -67,8 +67,8 @@ ___
 * Next, run unit tests to make sure added customization passes the tests
 ```
 cd ./deployment
-chmod +x ./run-unit-tests.sh  \n
-./run-unit-tests.sh \n
+chmod +x ./run-unit-tests.sh
+./run-unit-tests.sh
 ```
 
 ## Building distributable for customization
@@ -81,9 +81,13 @@ For example if you want to deploy in us-east-1 make sure you have a bucket that 
 
 This script will use the default AWS profile in your AWS CLI to upload assets to the bucket you provide. 
 _Note:_ you must have the AWS Command Line Interface installed.
+
+BUCKET_BASE_NAME is equal to the base name of the S3 bucket in your account. 
+For instance if you have two buckets that you have created my-test-bucket-us-east-1 and my-test-bucket-us-west-2 the BUCKET_BASE_NAME is equal to my-test-bucket. 
+_Note:_ you will need a bucket with the region that you want to deploy in. So if you want Virginia (us-east-1) then you will need a bucket with a -us-east-1 after your base name.
 ```
-chmod +x ./build-s3-dist.sh \n
-./build-s3-dist.sh --template-bucket BUCKET_BASE_NAME-us-east-1 --code-bucket BUCKET_BASE_NAME --version 1.0.0 --region us-east-1 \n
+chmod +x ./build-s3-dist.sh
+./build-s3-dist.sh --template-bucket BUCKET_BASE_NAME-us-east-1 --code-bucket BUCKET_BASE_NAME --version 1.0.0 --region us-east-1
 ```
 
 * Get the link of the solution template uploaded to your Amazon S3 bucket.
