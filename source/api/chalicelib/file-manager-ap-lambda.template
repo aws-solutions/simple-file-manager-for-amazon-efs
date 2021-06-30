@@ -14,8 +14,6 @@ Parameters:
     Type: String
   VpcConfigSubnetIds:
     Type: String
-  StackPrefix:
-    Type: String
 
 Resources:
   ManagedAccessPoint:
@@ -233,7 +231,7 @@ Resources:
       FileSystemConfigs:
         - Arn: !GetAtt ManagedAccessPoint.Arn
           LocalMountPath: "/mnt/efs"
-      FunctionName: !Sub "${StackPrefix}-EFSFileManager-${FileSystemId}-manager-lambda"
+      FunctionName: !Sub "${FileSystemId}-manager-lambda"
       Handler: "index.lambda_handler"
       MemorySize: 512
       PackageType: "Zip"

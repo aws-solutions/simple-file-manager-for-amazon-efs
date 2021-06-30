@@ -35,7 +35,7 @@ cfn = boto3.client('cloudformation', config=config)
 # Helper functions
 
 def proxy_operation_to_efs_lambda(filesystem_id, event):
-    lambda_name = '{stack_prefix}-EFSFileManager-{filesystem}-manager-lambda'.format(stack_prefix=stack_prefix,filesystem=filesystem_id)
+    lambda_name = '{filesystem}-manager-lambda'.format(filesystem=filesystem_id)
     try:
         response = serverless.invoke(
             InvocationType='RequestResponse',
