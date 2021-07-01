@@ -8,7 +8,7 @@ from selenium.webdriver.chrome.options import Options
 @pytest.fixture
 def browser():
     chrome_options = Options()
-    chrome_options.add_argument("--headless")
+    # chrome_options.add_argument("--headless")
     browser = webdriver.Chrome(chrome_options=chrome_options)
     return browser
 
@@ -32,27 +32,26 @@ def test_complete_app(browser, testing_env_variables):
 
     assert filesystem_element.text == testing_env_variables['FILESYSTEM_ID']
    
-    browser.find_element_by_xpath("/html/body/div/div[2]/div/div/div/div/div/div/table/tbody/tr[1]/td[2]/div/a").click()
+    browser.find_element_by_xpath("/html/body/div[1]/div[2]/div/div/div/div/div/div/table/tbody/tr/td[2]/div/a").click()
    
     # Click file manager lambda submit button
    
     browser.find_element_by_xpath("/html/body/div/div[2]/div/div/div/div[1]/form/button").click()
 
-    time.sleep(30)
+    time.sleep(15)
 
-    creating_element = browser.find_element_by_xpath("/html/body/div/div[2]/div/div/div/div/div/div/table/tbody/tr[1]/td[2]/div/a")
+    creating_element = browser.find_element_by_xpath("/html/body/div[1]/div[2]/div/div/div/div/div/div/table/tbody/tr/td[2]/div/a")
     assert creating_element.text == "Creating"
 
     # Wait for lambda to be created
 
-    time.sleep(270)
+    time.sleep(360)
 
     browser.refresh()
 
     # Open filesystem page
 
-    browser.find_element_by_xpath("/html/body/div/div[2]/div/div/div/div/div/div/table/tbody/tr[1]/td[3]/div/a").click()
-    
+    browser.find_element_by_xpath("/html/body/div/div[2]/div/div/div/div/div/div/table/tbody/tr/td[3]/div/a").click()
     # Create directory
     
     browser.find_element_by_xpath("/html/body/div/div[2]/div/div/div[1]/div/div/div/div[3]/button").click()
@@ -103,6 +102,34 @@ def test_complete_app(browser, testing_env_variables):
     delete_status = browser.find_element_by_xpath("/html/body/div/div[2]/div[1]")
     
     assert "File deleted successfully!" in delete_status.text
+    
+    # Navigate home
+
+    browser.find_element_by_xpath("/html/body/div/div[1]/nav/ul[1]/a").click()
+
+    time.sleep(5)
+
+    # Delete resources
+
+    browser.find_element_by_xpath("/html/body/div[1]/div[2]/div/div/div/div/div/div/table/tbody/tr/td[2]/div/a").click()
+    
+    time.sleep(5)
+    
+    browser.find_element_by_xpath("/html/body/div/div[2]/div/div/button").click()
+
+    time.sleep(5)
+    
+    deleting_status = browser.find_element_by_xpath("/html/body/div[1]/div[2]/div/div/div/div/div/div/table/tbody/tr/td[2]/div/a")
+    
+    assert "Deleting" in deleting_status.text
+
+    time.sleep(120)
+
+    browser.refresh()
+    
+    false_status = browser.find_element_by_xpath("/html/body/div[1]/div[2]/div/div/div/div/div/div/table/tbody/tr/td[2]/div/a")
+
+    assert "false" in false_status.text
 
     # Sign out
     browser.find_element_by_xpath("/html/body/div/div[1]/nav/ul[2]/div/div/button").click()
