@@ -209,7 +209,7 @@ echo "CloudFormation Templates"
 echo "------------------------------------------------------------------------------"
 
 echo "Preparing template files:"
-cp "$build_dir/efs-file-manager.yaml" "$global_dist_dir/efs-file-manager.template"
+cp "$build_dir/simple-file-manager-for-amazon-efs.yaml" "$global_dist_dir/simple-file-manager-for-amazon-efs.template"
 cp "$build_dir/efs-file-manager-web.yaml" "$global_dist_dir/efs-file-manager-web.template"
 cp "$build_dir/efs-file-manager-auth.yaml" "$global_dist_dir/efs-file-manager-auth.template"
 
@@ -221,9 +221,9 @@ new_global_bucket="s/%%GLOBAL_BUCKET_NAME%%/$global_bucket/g"
 new_regional_bucket="s/%%REGIONAL_BUCKET_NAME%%/$regional_bucket/g"
 new_version="s/%%VERSION%%/$version/g"
 # Update templates in place. Copy originals to [filename].orig
-sed -i.orig -e "$new_global_bucket" "$global_dist_dir/efs-file-manager.template"
-sed -i.orig -e "$new_regional_bucket" "$global_dist_dir/efs-file-manager.template"
-sed -i.orig -e "$new_version" "$global_dist_dir/efs-file-manager.template"
+sed -i.orig -e "$new_global_bucket" "$global_dist_dir/simple-file-manager-for-amazon-efs.template"
+sed -i.orig -e "$new_regional_bucket" "$global_dist_dir/simple-file-manager-for-amazon-efs.template"
+sed -i.orig -e "$new_version" "$global_dist_dir/simple-file-manager-for-amazon-efs.template"
 
 # Update templates in place. Copy originals to [filename].orig
 sed -i.orig -e "$new_global_bucket" "$global_dist_dir/efs-file-manager-web.template"
@@ -360,7 +360,7 @@ if [ "$global_bucket" != "solutions-features-reference" ] && [ "$global_bucket" 
 
     echo ""
     echo "Template to deploy:"
-    echo "TEMPLATE='"https://"$global_bucket"."$s3domain"/simple-file-manager-for-amazon-efs/"$version"/efs-file-manager.template"'"
+    echo "TEMPLATE='"https://"$global_bucket"."$s3domain"/simple-file-manager-for-amazon-efs/"$version"/simple-file-manager-for-amazon-efs.template"'"
 fi 
 
 cleanup

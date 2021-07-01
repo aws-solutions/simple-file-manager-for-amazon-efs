@@ -31,7 +31,7 @@ jobs:
           DIST_OUTPUT_BUCKET=sfm-dev
           TEMPLATE_OUTPUT_BUCKET=sfm-dev-us-west-2
           ./build-s3-dist.sh --template-bucket $TEMPLATE_OUTPUT_BUCKET --code-bucket $DIST_OUTPUT_BUCKET --version $VERSION --region $REGION
-          aws cloudformation deploy --stack-name $SFM_STACK_NAME --region $REGION --template-file global-s3-assets/efs-file-manager.template --s3-bucket $DIST_OUTPUT_BUCKET-$REGION --s3-prefix efs_file_manager/$VERSION --parameter-overrides AdminEmail=${{ secrets.TEST_ADMIN_EMAIL }} --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --force-upload
+          aws cloudformation deploy --stack-name $SFM_STACK_NAME --region $REGION --template-file global-s3-assets/simple-file-manager-for-amazon-efs.template --s3-bucket $DIST_OUTPUT_BUCKET-$REGION --s3-prefix efs_file_manager/$VERSION --parameter-overrides AdminEmail=${{ secrets.TEST_ADMIN_EMAIL }} --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --force-upload
       - name: Build Failed
         if: ${{ failure() }}
         uses: nashmaniac/create-issue-action@v1.1
