@@ -168,7 +168,7 @@ Resources:
             reason: "Cloudfront protocol version TLS 1.2"
     Properties:
       DistributionConfig:
-        Comment: "Website distribution for Content Analysis Solution"
+        Comment: "Website distribution for Simple File Manager for EFS Solution"
         Logging:
           Bucket: !Sub "${EFSFileSimpleWebsiteBucket}.s3.amazonaws.com"
           Prefix: cf_logs/
