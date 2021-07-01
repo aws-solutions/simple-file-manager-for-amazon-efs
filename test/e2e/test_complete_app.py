@@ -8,7 +8,7 @@ from selenium.webdriver.chrome.options import Options
 @pytest.fixture
 def browser():
     chrome_options = Options()
-    # chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--headless")
     browser = webdriver.Chrome(chrome_options=chrome_options)
     return browser
 
