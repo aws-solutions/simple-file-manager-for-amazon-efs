@@ -16,7 +16,7 @@
 # author: aws-solutions-builder@
 AWSTemplateFormatVersion: 2010-09-09
 
-Description: (SO0145) %%VERSION%% - Simple File Manager for Amazon EFS Solution Root Template 
+Description: (SO0145) Simple File Manager for Amazon EFS Solution Main %%VERSION%% 
 
 Parameters:
   AdminEmail:

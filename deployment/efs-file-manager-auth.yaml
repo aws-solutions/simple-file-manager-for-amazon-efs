@@ -11,7 +11,7 @@
 # express or implied. See the License for the specific language governing
 # permissions and limitations under the License.
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Simple File Manager for Amazon EFS Auth  %%VERSION%% - Deploys the Simple File Manager Cognito Infrastructure
+Description: (SO0145) Simple File Manager for Amazon EFS Solution Auth %%VERSION%% 
 
 Parameters:
   AdminEmail:
