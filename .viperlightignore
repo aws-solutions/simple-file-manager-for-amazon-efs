@@ -7,5 +7,8 @@ deployment/.idea/workspace.xml:73
 docs/assets/images/sfm_logo.svg:3
 source/api/.idea/workspace.xml:109
 deployment/efs-file-manager-auth.yaml:158
+deployment/efs-file-manager-auth.yaml:171
 deployment/simple-file-manager-for-amazon-efs.yaml:74
 deployment/simple-file-manager-for-amazon-efs.yaml:59
+deployment/simple-file-manager-for-amazon-efs.yaml:84
+deployment/simple-file-manager-for-amazon-efs.yaml:69
