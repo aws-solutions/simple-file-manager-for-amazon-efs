@@ -1,8 +1,19 @@
 #!/bin/bash
+######################################################################################################################
+#  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.                                                #
+#                                                                                                                    #
+#  Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance    #
+#  with the License. A copy of the License is located at                                                             #
+#                                                                                                                    #
+#      http://www.apache.org/licenses/LICENSE-2.0                                                                    #
+#                                                                                                                    #
+#  or in the 'license' file accompanying this file. This file is distributed on an 'AS IS' BASIS, WITHOUT WARRANTIES #
+#  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions    #
+#  and limitations under the License.                                                                                #
+######################################################################################################################
+
+
 ###############################################################################
-# Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
 # PURPOSE:
 #   Build cloud formation templates for the %%%%%%%%
 # USAGE:
@@ -18,7 +29,6 @@
 #
 #     -h | --help       Print usage
 #     -v | --verbose    Print script debug info
-
 #
 ###############################################################################
 
@@ -341,6 +351,18 @@ rm -rf ./dist
 # Skip copy dist to S3 if building for solution builder because
 # that pipeline takes care of copying the dist in another script.
 if [ "$global_bucket" != "solutions-features-reference" ] && [ "$global_bucket" != "solutions-reference" ] && [ "$global_bucket" != "solutions-test-reference" ]; then
+    
+    echo "------------------------------------------------------------------------------"
+    echo "Validate user is valid owner of S3 bucket"
+    echo "------------------------------------------------------------------------------"
+    # Get account id
+    account_id=$(aws sts get-caller-identity --query Account --output text)
+    if [ $? -ne 0 ]; then
+        msg "ERROR: Failed to get AWS account ID"
+        exit 1
+    fi
+    # Validate user is valid owner of S3 bucket
+    aws s3api head-bucket --bucket ${regional_bucket}-${region} --expected-bucket-owner $account_id
 
     echo "------------------------------------------------------------------------------"
     echo "Copy dist to S3"
