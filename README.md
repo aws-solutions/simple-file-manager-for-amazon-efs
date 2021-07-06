@@ -62,6 +62,19 @@ The cost to deploy and use the solution is minimal due to its serverless archite
 ___
 
 
+
+
+## Building distributable for customization
+
+<a name="prerequisites"></a>
+## Prerequisites
+[//]: # (Add any prerequisites for customization steps. e.g. Prerequisite: Node.js>10)
+
+* Install/update to Python 3.x
+* Install/update npm, this is needed to build and install the Vue.JS Web interface. 
+* Install the AWS Command Line Interface (CLI)
+* Create an S3 bucket to store your CloudFormation template and resources with the instructions listed below. 
+
 ## Running unit tests for customization
 * Clone the repository, then make the desired code changes
 * Next, run unit tests to make sure added customization passes the tests
@@ -71,7 +84,6 @@ chmod +x ./run-unit-tests.sh  \n
 ./run-unit-tests.sh \n
 ```
 
-## Building distributable for customization
 * Configure the bucket name of your target Amazon S3 distribution bucket
 
 _Note:_ You would have to create an S3 bucket with the prefix 'my-bucket-name-<aws_region>'; aws_region is where you are testing the customized solution. Also, the assets in bucket should be publicly accessible.
