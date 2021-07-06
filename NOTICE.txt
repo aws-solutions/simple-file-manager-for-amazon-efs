@@ -13,3 +13,18 @@ THIRD PARTY COMPONENTS
 This software includes third party software subject to the following copyrights:
 
 AWS SDK under the Apache License Version 2.0
+Pytest under the MIT License (MIT)
+Selenium under the Apache License Version 2.0
+Boto3 under the Apache License Version 2.0
+Pyyaml under the MIT License (MIT)
+Requests_toolbelt under the Apache License Version 2.0
+Aws-amplify under the Apache License Version 2.0
+Aws-amplify-vue under the Apache License Version 2.0
+Bootstrap under the MIT License (MIT)
+Bootstrap-vue under the MIT License (MIT)
+Core-js under the MIT License (MIT)
+Vue under the MIT License (MIT)
+vue-router under the MIT License (MIT)
+vue-stepper-component under the MIT License (MIT)
+vue2-dropzone under the MIT License (MIT)
+webpack under the MIT License (MIT)
