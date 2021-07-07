@@ -80,8 +80,8 @@ ___
 * Next, run unit tests to make sure added customization passes the tests
 ```
 cd ./deployment
-chmod +x ./run-unit-tests.sh  \n
-./run-unit-tests.sh \n
+chmod +x ./run-unit-tests.sh  
+./run-unit-tests.sh 
 ```
 
 * Configure the bucket name of your target Amazon S3 distribution bucket
@@ -107,7 +107,7 @@ The main template is called efs-file-manager.template
 
 ***
 
-Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
 Licensed under the Apache License Version 2.0 (the "License"). You may not use this file except in compliance with the License. A copy of the License is located at
 
