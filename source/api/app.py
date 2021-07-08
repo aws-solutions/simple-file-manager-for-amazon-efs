@@ -1,46 +1,66 @@
-import boto3
-import base64
-import botocore
+######################################################################################################################
+#  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.                                                #
+#                                                                                                                    #
+#  Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance    #
+#  with the License. A copy of the License is located at                                                             #
+#                                                                                                                    #
+#      http://www.apache.org/licenses/LICENSE-2.0                                                                    #
+#                                                                                                                    #
+#  or in the 'license' file accompanying this file. This file is distributed on an 'AS IS' BASIS, WITHOUT WARRANTIES #
+#  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions    #
+#  and limitations under the License.                                                                                #
+######################################################################################################################
+"""API for Simple File Manager for Amazon EFS"""
 import os
-import json
 import logging
-import time
-import zipfile
+import json
+import botocore
 from botocore.config import Config
-from chalice import Chalice, Response, ChaliceViewError, BadRequestError, UnauthorizedError, ForbiddenError, NotFoundError, ConflictError, TooManyRequestsError, IAMAuthorizer
+import boto3
+from chalice import Chalice, ChaliceViewError, BadRequestError, IAMAuthorizer
 
 
 # Misc global variables
 
 app = Chalice(app_name='api')
 app.log.setLevel(logging.DEBUG)
-efs_lambda = os.path.join(
-    os.path.dirname(__file__), 'chalicelib', 'efs_lambda.py')
+TEMPLATE_PATH = os.path.join(
+    os.path.dirname(__file__), 'chalicelib', 'file-manager-ap-lambda.template')
 
-sfm_config = json.loads(os.environ['botoConfig'])
-config = Config(**sfm_config)
+SFM_CONFIG = json.loads(os.environ['botoConfig'])
+CONFIG = Config(**SFM_CONFIG)
+STACK_PREFIX = os.environ['stackPrefix']
 
 # Cognito resources
 # From cloudformation stack
 
-authorizer = IAMAuthorizer()
+AUTHORIZER = IAMAuthorizer()
 
 # AWS Clients
 
-efs = boto3.client('efs', config=config)
-serverless = boto3.client('lambda', config=config)
-iam = boto3.client('iam', config=config)
+EFS = boto3.client('efs', config=CONFIG)
+SERVERLESS = boto3.client('lambda', config=CONFIG)
+CFN = boto3.client('cloudformation', config=CONFIG)
 
 
 # Helper functions
 
-def proxy_operation_to_efs_lambda(filesystem_id, event):
+def proxy_operation_to_efs_lambda(filesystem_id, operation):
+    """
+    Proxies file system operations to the file manager lambda associated to a
+    given filesystem
+
+    :param filesystem_id: The id of the filesystem
+    :param operation: The filesystem operation
+    :returns: The filesystem operation result
+    :raises ChaliceViewError
+    """
     lambda_name = '{filesystem}-manager-lambda'.format(filesystem=filesystem_id)
     try:
-        response = serverless.invoke(
+        response = SERVERLESS.invoke(
             InvocationType='RequestResponse',
             FunctionName=lambda_name,
-            Payload=bytes(json.dumps(event), encoding='utf-8')
+            Payload=bytes(json.dumps(operation), encoding='utf-8')
         )
     except botocore.exceptions.ClientError as error:
         app.log.error(error)
@@ -49,41 +69,13 @@ def proxy_operation_to_efs_lambda(filesystem_id, event):
         return response
 
 
-def create_filesystem_access_point(filesystem_id, uid, gid, path):
-    try:
-        response = efs.create_access_point(
-        FileSystemId=filesystem_id,
-        PosixUser={
-            'Uid': uid,
-            'Gid': gid
-        },
-        RootDirectory={
-            'Path': path,
-            'CreationInfo': {
-                'OwnerUid': uid,
-                'OwnerGid': gid,
-                'Permissions': '777'
-            }
-        }
-    )
-    except botocore.exceptions.ClientError as error:
-        return ChaliceViewError(error)
-    else:
-        access_point_arn = response['AccessPointArn']
-        return access_point_arn
-
-
-def delete_access_point(access_point_arn):
-    # TODO: Look into why this function is not working, causing a minor bug
-    try:
-        efs.delete_access_point(
-            AccessPointId=access_point_arn)
-    except botocore.exceptions.ClientError as error:
-        app.log.error(error)
-        raise BadRequestError(error)
-
-
 def format_filesystem_response(filesystem):
+    """
+    Formats the response from EFS for a filesystem description
+
+    :param filesystem: The filesystem response to format
+    :returns: The formatted filesystem response
+    """
     filesystem_id = filesystem['FileSystemId']
     new_filesystem_object = dict()
     try:
@@ -91,25 +83,20 @@ def format_filesystem_response(filesystem):
         new_filesystem_object["name"] = name
     except KeyError:
         pass
-    
-    is_managed = has_manager_lambda(filesystem_id)
+
+    stack_status = describe_manager_stack(filesystem_id)
 
     lifecycle_state = filesystem['LifeCycleState']
-    # TODO: BUG - Serialize datetime object to json properly
-    #size_in_bytes = filesystem['SizeInBytes']
 
-    # TODO: BUG - Serialize datetime object to json properly
-
-    #creation_time = filesystem['CreationTime']
-
-    if is_managed["Status"] is True:
-        if is_managed["Message"] == "Active":
-            new_filesystem_object["managed"] = True
-        else:
-            new_filesystem_object["managed"] = "Creating"
-    else:
+    if stack_status['Stacks'][0]['StackStatus'] is False:
         new_filesystem_object["managed"] = False
-    
+    elif stack_status['Stacks'][0]['StackStatus'] == 'DELETE_IN_PROGRESS':
+        new_filesystem_object["managed"] = "Deleting"
+    elif stack_status['Stacks'][0]['StackStatus'] == 'CREATE_IN_PROGRESS':
+        new_filesystem_object["managed"] = "Creating"
+    elif stack_status['Stacks'][0]['StackStatus'] == 'CREATE_COMPLETE':
+        new_filesystem_object["managed"] = True
+
     new_filesystem_object["file_system_id"] = filesystem_id
     new_filesystem_object["lifecycle_state"] = lifecycle_state
     #new_filesystem_object["size_in_bytes"] = size_in_bytes
@@ -118,139 +105,159 @@ def format_filesystem_response(filesystem):
     return new_filesystem_object
 
 
-def create_function_zip():
-    # TODO: Should this be a unique name / path based on give filesystem?
-    zip_path = "/tmp/lambda.zip"
-    with zipfile.ZipFile(zip_path, 'w') as z:
-        z.write(efs_lambda)
-    with open(zip_path, 'rb') as f:
-        code = f.read()
-    return code
+def read_template_file():
+    """
+    Loads file manager managed resources template file
+    """
+    with open(TEMPLATE_PATH, 'r') as template_file:
+        template = template_file.read()
+    return template
 
 
-def create_function_role(filesystem_name):
-    trust_policy = {
-        "Version": "2012-10-17",
-        "Statement": [
-            {
-                "Sid": "",
-                "Effect": "Allow",
-                "Principal": {
-                    "Service": "lambda.amazonaws.com"
-                },
-                "Action": "sts:AssumeRole"
-            }
-        ]
-    }
+def describe_manager_stack(filesystem_id):
+    """
+    Describes the file manager managed fresources stack for a given filesystem
 
-    role_name = f'{filesystem_name}-manager-role'
-    path = '/'
-    description = f'IAM Role for filesystem {filesystem_name} manager lambda'
-
-    # TODO: Add IAM resource tags
+    :param filesystem_id: The id of the filesystem to describe
+    :returns: File manager stack details
+    :raises ChaliceViewError
+    """
+    stack_name = '{prefix}-ManagedResources-{filesystem}'.format(prefix=STACK_PREFIX, \
+        filesystem=filesystem_id)
     try:
-        role_response = iam.create_role(
-            Path=path,
-            RoleName=role_name,
-            AssumeRolePolicyDocument=json.dumps(trust_policy),
-            Description=description,
-            MaxSessionDuration=3600
-        )
-    except Exception as e:
-        app.log.debug(e)
-        return ChaliceViewError(e)
-    
-
-    iam.attach_role_policy(RoleName=role_name,
-                           PolicyArn='arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole')
-    iam.attach_role_policy(RoleName=role_name,
-                           PolicyArn='arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole')
-    iam.attach_role_policy(RoleName=role_name,
-                           PolicyArn='arn:aws:iam::aws:policy/AmazonElasticFileSystemClientReadWriteAccess')
-    
-    
-    role_arn = str(role_response['Role']['Arn'])
-    
-    return role_arn
-
-
-def create_function(filesystem_id, access_point_arn, vpc):
-    code = create_function_zip()
-    role = create_function_role(filesystem_id)
-    # TODO: Add retry logic instead of relying on sleep
-    time.sleep(15)
-    try:
-        response = serverless.create_function(
-            FunctionName='{filesystem}-manager-lambda'.format(filesystem=filesystem_id),
-            Runtime='python3.8',
-            Role=role,
-            Handler='var/task/chalicelib/efs_lambda.lambda_handler',
-            Code={
-                'ZipFile': code
-            },
-            Description='Lambda function to process file manager operations for filesystem: {filesystem}'.format(filesystem=filesystem_id),
-            Timeout=60,
-            MemorySize=512,
-            Publish=True,
-            VpcConfig=vpc,
-            # TODO: Add tags to identify this is managed by the file system manager app
-            # Environment={
-            #     'Variables': {
-            #         'string': 'string'
-            #     }
-            # },
-            # Tags={
-            #     'string': 'string'
-            # },
-            FileSystemConfigs=[
-                {
-                    'Arn': access_point_arn,
-                    'LocalMountPath': '/mnt/efs'
-                },
-            ]
+        response = CFN.describe_stacks(
+            StackName=stack_name,
         )
     except botocore.exceptions.ClientError as error:
         app.log.error(error)
-        app.log.debug('failed to create lambda, deleting access point')
-        delete_access_point(access_point_arn)
-        raise ChaliceViewError("Check API logs")
+        stack_status = {'Stacks': [{
+            'StackStatus': False
+        }]}
+        return stack_status if error.response['Error']['Code'] == 'ValidationError' \
+            else ChaliceViewError(error)
     else:
         return response
 
 
-def has_manager_lambda(filesystem_id):
+def delete_manager_stack(filesystem_id):
+    """
+    Deletes a file manager managed resources stack
+
+    :param filesystem_id: The id of the filesystem to delete
+    :returns: Deletion status
+    :raises ChaliceViewError
+    """
+    stack_name = '{prefix}-ManagedResources-{filesystem}'.format(prefix=STACK_PREFIX, \
+        filesystem=filesystem_id)
     try:
-        response = serverless.get_function(
-            FunctionName='{filesystem}-manager-lambda'.format(filesystem=filesystem_id)
+        response = CFN.delete_stack(
+            StackName=stack_name,
         )
     except botocore.exceptions.ClientError as error:
-        if error.response['Error']['Code'] == 'ResourceNotFoundException':
-            return {"Status": False}
-        else:
-            app.log.error(error)
-            return {"Status": False}
+        app.log.error(error)
+        raise ChaliceViewError(error)
     else:
-        function_state = response['Configuration']['State']
-        if function_state == 'Active':
-            return {"Status": True, "Message": "Active"}
+        return response
 
-        elif function_state == 'Pending':
-            return {"Status": True, "Message": "Creating"}
 
-        else:
-            return {"Status": False}
+def create_manager_stack(filesystem_id, uid, gid, path, subnet_ids, security_groups):
+    """
+    Creates a file manager managed resources stack
+
+    :param filesystem_id: The id of the filesystem to create resources for
+    :param uid: UID that will be used in the EFS access point
+    :param gid: GID that will be used in the EFS access point
+    :param path: Path that will be used in the EFS access point
+    :param subnet_ids: Subnet IDs that the lambda function will use
+    :param security_groups: Security groups that the lambda function will use
+    :returns: Create status
+    :raises ChaliceViewError
+    """
+    stack_name = '{prefix}-ManagedResources-{filesystem}'.format(prefix=STACK_PREFIX, \
+        filesystem=filesystem_id)
+
+    template_body = read_template_file()
+
+    try:
+        response = CFN.create_stack(
+            StackName=stack_name,
+            TemplateBody=template_body,
+            Parameters=[
+                {
+                    'ParameterKey': 'FileSystemId',
+                    'ParameterValue': filesystem_id,
+                },
+                {
+                    'ParameterKey': 'PosixUserUid',
+                    'ParameterValue': uid,
+                },
+                {
+                    'ParameterKey': 'PosixUserGid',
+                    'ParameterValue': gid,
+                },
+                {
+                    'ParameterKey': 'RootDirectoryPath',
+                    'ParameterValue': path,
+                },
+                {
+                    'ParameterKey': 'VpcConfigSgIds',
+                    'ParameterValue': ','.join(security_groups),
+                },
+                {
+                    'ParameterKey': 'VpcConfigSubnetIds',
+                    'ParameterValue': ','.join(subnet_ids),
+                },
+            ],
+            TimeoutInMinutes=15,
+            Capabilities=[
+                'CAPABILITY_NAMED_IAM',
+            ],
+            OnFailure='DELETE',
+        )
+    except botocore.exceptions.ClientError as error:
+        app.log.error(error)
+        raise ChaliceViewError(error)
+    else:
+        return response
+
+
+def format_operation_response(result, error_message):
+    """
+    Formats filesystem operation results from file manager lambda
+
+    :param result: The filesystem operation result
+    :param error_message: Custom error message to format response with
+    :returns: Formatted filesystem operation response
+    :raises ChaliceViewError
+    """
+    response = {}
+
+    status = result['StatusCode']
+    payload_encoded = result['Payload']
+    payload = json.loads(payload_encoded.read().decode("utf-8"))
+
+    if status == 200:
+        response = payload
+    else:
+        app.log.error(payload)
+        response = ChaliceViewError('{message}: \
+            {payload}'.format(message=error_message, payload=payload))
+
+    return response
 
 
 # Routes
-@app.route('/')
-def index():
-    return {'hello': 'world'}
 
-
-@app.route('/filesystems', methods=["GET"], cors=True, authorizer=authorizer)
+@app.route('/filesystems', methods=["GET"], cors=True, authorizer=AUTHORIZER)
 def list_filesystems():
+    """
+    Lists all EFS filesystems in the account
+
+    :returns: Object containing filesystems
+    :raises ChaliceViewError
+    """
     try:
-        response = efs.describe_file_systems()
+        response = EFS.describe_file_systems()
     except botocore.exceptions.ClientError as error:
         app.log.error(error)
         raise ChaliceViewError("Check API logs")
@@ -258,15 +265,27 @@ def list_filesystems():
         filesystems = response['FileSystems']
         formatted_filesystems = []
         for filesystem in filesystems:
-            formatted = format_filesystem_response(filesystem)
-            formatted_filesystems.append(formatted)
+            try:
+                formatted = format_filesystem_response(filesystem)
+            except botocore.exceptions.ClientError as error:
+                app.log.error(error)
+                raise ChaliceViewError("Check API logs")
+            else:
+                formatted_filesystems.append(formatted)
         return formatted_filesystems
 
 
-@app.route('/filesystems/{filesystem_id}', methods=['GET'], cors=True, authorizer=authorizer)
+@app.route('/filesystems/{filesystem_id}', methods=['GET'], cors=True, authorizer=AUTHORIZER)
 def describe_filesystem(filesystem_id):
+    """
+    Retrieves details for a specified filesystem
+
+    :param filesystem_id: The filesystem to describe
+    :returns: Filesystem details
+    :raises ChaliceViewError
+    """
     try:
-        response = efs.describe_file_systems(
+        response = EFS.describe_file_systems(
             FileSystemId=filesystem_id
         )
     except botocore.exceptions.ClientError as error:
@@ -276,11 +295,19 @@ def describe_filesystem(filesystem_id):
         return json.dumps(response, indent=4, sort_keys=True, default=str)
 
 
-@app.route('/filesystems/{filesystem_id}/netinfo', methods=['GET'], cors=True, authorizer=authorizer)
+@app.route('/filesystems/{filesystem_id}/netinfo', methods=['GET'], cors=True, \
+    authorizer=AUTHORIZER)
 def get_netinfo_for_filesystem(filesystem_id):
+    """
+    Retrieves network info for a specified filesystem
+
+    :param filesystem_id: The filesystem to get net info for
+    :returns: Filesystem network info
+    :raises ChaliceViewError
+    """
     netinfo = []
     try:
-        response = efs.describe_mount_targets(
+        response = EFS.describe_mount_targets(
             FileSystemId=filesystem_id
         )
     except botocore.exceptions.ClientError as error:
@@ -292,7 +319,7 @@ def get_netinfo_for_filesystem(filesystem_id):
         for target in mount_targets:
             mount_target_id = target['MountTargetId']
             try:
-                response = efs.describe_mount_target_security_groups(
+                response = EFS.describe_mount_target_security_groups(
                     MountTargetId=mount_target_id
                 )
             except botocore.exceptions.ClientError as error:
@@ -300,59 +327,87 @@ def get_netinfo_for_filesystem(filesystem_id):
                 raise ChaliceViewError
             else:
                 security_groups = response['SecurityGroups']
-                vpc_item = {'{id}'.format(id=mount_target_id): {'security_groups': security_groups, 'subnet_id': target['SubnetId']}}
+                vpc_item = {'{id}'.format(id=mount_target_id): {'security_groups': \
+                    security_groups, 'subnet_id': target['SubnetId']}}
                 netinfo.append(vpc_item)
 
     return netinfo
 
 
-@app.route('/filesystems/{filesystem_id}/lambda', methods=['POST'], cors=True, authorizer=authorizer)
+@app.route('/filesystems/{filesystem_id}/lambda', methods=['POST'], cors=True, \
+    authorizer=AUTHORIZER)
 def create_filesystem_lambda(filesystem_id):
+    """
+    Proxies the filesystem manager creation to the create_manager_stack
+    helper function
+
+    :param filesystem_id: The filesystem to create resources for
+    :returns: Creation response
+    :raises ChaliceViewError, BadRequestError
+    """
     request = app.current_request
     json_body = request.json_body
 
     try:
         subnet_ids = json_body['subnetIds']
         security_groups = json_body['securityGroups']
-        uid = int(json_body['uid'])
-        gid = int(json_body['gid'])
+        uid = json_body['uid']
+        gid = json_body['gid']
         path = json_body['path']
     except KeyError as error:
         app.log.error(error)
         raise BadRequestError("Check API logs")
-    else:
-        vpc_config = {
-            'SubnetIds': subnet_ids,
-            'SecurityGroupIds': security_groups
-        }
 
     try:
-        access_point_arn = create_filesystem_access_point(filesystem_id, uid, gid, path)
+        response = create_manager_stack(filesystem_id, uid, gid, path, subnet_ids, security_groups)
     except Exception as error:
         app.log.error(error)
-        raise ChaliceViewError('Check API Logs')
-
-    # TODO: Add retry logic instead of relying on sleep
-    time.sleep(10)
-
-    try:
-        response = create_function(filesystem_id, access_point_arn, vpc_config)
-    except Exception as error:
-        app.log.error(error)
+        app.log.debug('Failed to create stack, deleting it.')
         raise ChaliceViewError('Check API Logs')
     else:
         return response
 
 
-@app.route('/objects/{filesystem_id}/upload', methods=["POST"], cors=True, authorizer=authorizer)
+@app.route('/filesystems/{filesystem_id}/lambda', methods=['DELETE'], cors=True, \
+    authorizer=AUTHORIZER)
+def delete_filesystem_lambda(filesystem_id):
+    """
+    Proxies the filesystem manager deletion to the delete_manager_stack
+    helper function
+
+    :param filesystem_id: The filesystem to delete resources for
+    :returns: Deletion response
+    :raises ChaliceViewError, BadRequestError
+    """
+    stack_status = describe_manager_stack(filesystem_id)
+    if stack_status['Stacks'][0]['StackStatus'] == 'CREATE_COMPLETE':
+        try:
+            delete_stack = delete_manager_stack(filesystem_id)
+            app.log.info(delete_stack)
+        except Exception as error:
+            raise ChaliceViewError(error)
+    else:
+        raise BadRequestError('No valid managed stack for this filesystem')
+
+
+@app.route('/objects/{filesystem_id}/upload', methods=["POST"], cors=True, authorizer=AUTHORIZER)
 def upload(filesystem_id):
+    """
+    Uploads a file
+
+    :param filesystem_id: The filesystem to perform operation on
+    :param path: The path to upload the file
+    :param filename: The name of the file
+    :returns: Filesystem operation response
+    :raises ChaliceViewError, BadRequestError
+    """
     print(app.current_request.query_params)
     try:
         path = app.current_request.query_params['path']
         filename = app.current_request.query_params['filename']
-    except KeyError as e:
-        app.log.error('Missing required query param: {e}'.format(e=e))
-        raise BadRequestError('Missing required query param: {e}'.format(e=e))
+    except KeyError as error:
+        app.log.error('Missing required query param: {e}'.format(e=error))
+        raise BadRequestError('Missing required query param: {e}'.format(e=error))
 
     request = app.current_request
     chunk_data = request.json_body
@@ -361,35 +416,36 @@ def upload(filesystem_id):
     filemanager_event = {"operation": "upload", "path": path, "chunk_data": chunk_data}
 
     operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
+    error_message = "Error uploading file"
 
-    # TODO: Fix this to also parse payload for status code
-
-    if operation_result['StatusCode'] == 200:
-        payload_encoded = operation_result['Payload']
-        payload = json.loads(payload_encoded.read().decode("utf-8"))
-        return payload
-    else:
-        payload_encoded = operation_result['Payload']
-        payload = json.loads(payload_encoded.read().decode("utf-8"))
-        app.log.error(payload)
-        raise ChaliceViewError('Error uploading file: {payload}'.format(payload=payload))
+    return format_operation_response(operation_result, error_message)
 
 
-@app.route('/objects/{filesystem_id}/download', methods=["GET"], cors=True, authorizer=authorizer)
+@app.route('/objects/{filesystem_id}/download', methods=["GET"], cors=True, authorizer=AUTHORIZER)
 def download(filesystem_id):
+    """
+    Downloads a file
+
+    :param filesystem_id: The filesystem to perform operation on
+    :param path: The path to download the file
+    :param filename: The name of the file
+    :returns: Filesystem operation response
+    :raises ChaliceViewError, BadRequestError
+    """
     print(app.current_request.query_params)
     try:
         path = app.current_request.query_params['path']
         filename = app.current_request.query_params['filename']
-    except KeyError as e:
-        app.log.error('Missing required query param: {e}'.format(e=e))
-        raise BadRequestError('Missing required query param: {e}'.format(e=e))
+    except KeyError as error:
+        app.log.error('Missing required query param: {e}'.format(e=error))
+        raise BadRequestError('Missing required query param: {e}'.format(e=error))
     else:
         if 'dzchunkindex' and 'dzchunkbyteoffset' in app.current_request.query_params:
             chunk_index = app.current_request.query_params['dzchunkindex']
             chunk_offset = app.current_request.query_params['dzchunkbyteoffset']
-            filemanager_event = {"operation": "download", "path": path, "filename": filename,
-                                 "chunk_data": {"dzchunkindex": int(chunk_index), "dzchunkbyteoffset": int(chunk_offset)}}
+            filemanager_event = {"operation": "download", "path": path, "filename": filename, \
+                                 "chunk_data": {"dzchunkindex": int(chunk_index), \
+                                     "dzchunkbyteoffset": int(chunk_offset)}}
             operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
             payload_encoded = operation_result['Payload']
             payload = json.loads(payload_encoded.read().decode("utf-8"))
@@ -404,59 +460,69 @@ def download(filesystem_id):
             raise BadRequestError('Unsupported or missing query params')
 
 
-@app.route('/objects/{filesystem_id}/dir', methods=['POST'], cors=True, authorizer=authorizer)
+@app.route('/objects/{filesystem_id}/dir', methods=['POST'], cors=True, authorizer=AUTHORIZER)
 def make_dir(filesystem_id):
+    """
+    Make a directory
+
+    :param filesystem_id: The filesystem to perform operation on
+    :param path: The path to create a directory
+    :param name: The name of the directory
+    :returns: Filesystem operation response
+    :raises ChaliceViewError, BadRequestError
+    """
     request = app.current_request
     dir_data = request.json_body
 
     try:
         name = dir_data['name']
         path = dir_data['path']
-    except KeyError as e:
-        app.log.error('Missing required param: {e}'.format(e=e))
-        raise BadRequestError('Missing required param: {e}'.format(e=e))
+    except KeyError as error:
+        app.log.error('Missing required param: {e}'.format(e=error))
+        raise BadRequestError('Missing required param: {e}'.format(e=error))
     else:
         filemanager_event = {"operation": "make_dir", "path": path, "name": name}
         operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
-        # TODO: Fix this to also parse payload for status code
+        error_message = "Error creating dir"
 
-        if operation_result['StatusCode'] == 200:
-            payload_encoded = operation_result['Payload']
-            payload = json.loads(payload_encoded.read().decode("utf-8"))
-            return payload
-        else:
-            payload_encoded = operation_result['Payload']
-            payload = json.loads(payload_encoded.read().decode("utf-8"))
-            app.log.error(payload)
-            raise ChaliceViewError('Error creating dir: {payload}'.format(payload=payload))
+        return format_operation_response(operation_result, error_message)
 
 
-@app.route('/objects/{filesystem_id}', methods=['DELETE'], cors=True, authorizer=authorizer)
+@app.route('/objects/{filesystem_id}', methods=['DELETE'], cors=True, authorizer=AUTHORIZER)
 def delete_object(filesystem_id):
+    """
+    Deletes a file
+
+    :param filesystem_id: The filesystem to perform operation on
+    :param path: The path to delete the file
+    :param filename: The name of the file
+    :returns: Filesystem operation response
+    :raises ChaliceViewError, BadRequestError
+    """
     try:
         name = app.current_request.query_params['name']
         path = app.current_request.query_params['path']
-    except KeyError as e:
-        app.log.error('Missing required query param: {e}'.format(e=e))
-        raise BadRequestError('Missing required query param: {e}'.format(e=e))
+    except KeyError as error:
+        app.log.error('Missing required query param: {e}'.format(e=error))
+        raise BadRequestError('Missing required query param: {e}'.format(e=error))
     else:
         filemanager_event = {"operation": "delete", "path": path, "name": name}
         operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
-        # TODO: Fix this to also parse payload for status code
+        error_message = "Error deleting file"
 
-        if operation_result['StatusCode'] == 200:
-            payload_encoded = operation_result['Payload']
-            payload = json.loads(payload_encoded.read().decode("utf-8"))
-            return payload
-        else:
-            payload_encoded = operation_result['Payload']
-            payload = json.loads(payload_encoded.read().decode("utf-8"))
-            app.log.error(payload)
-            raise ChaliceViewError('Error creating dir: {payload}'.format(payload=payload))
+        return format_operation_response(operation_result, error_message)
 
 
-@app.route('/objects/{filesystem_id}', methods=['GET'], cors=True, authorizer=authorizer)
+@app.route('/objects/{filesystem_id}', methods=['GET'], cors=True, authorizer=AUTHORIZER)
 def list_objects(filesystem_id):
+    """
+    Lists files in a specifed path
+
+    :param filesystem_id: The filesystem to perform operation on
+    :param path: The path to list
+    :returns: Filesystem operation response
+    :raises ChaliceViewError, BadRequestError
+    """
     if app.current_request.query_params['path']:
         path = app.current_request.query_params['path']
     else:
@@ -465,14 +531,6 @@ def list_objects(filesystem_id):
 
     filemanager_event = {"operation": "list", "path": path}
     operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
+    error_message = "Error listing files"
 
-    if operation_result['StatusCode'] == 200:
-        payload_encoded = operation_result['Payload']
-        payload = json.loads(payload_encoded.read().decode("utf-8"))
-        return payload
-    else:
-        payload_encoded = operation_result['Payload']
-        payload = json.loads(payload_encoded.read().decode("utf-8"))
-        app.log.error(payload)
-        raise ChaliceViewError('Error listing objects: {payload}'.format(payload=payload))
-
+    return format_operation_response(operation_result, error_message)

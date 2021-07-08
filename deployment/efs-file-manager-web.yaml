@@ -1,5 +1,17 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License").
+# You may not use this file except in compliance with the License.
+# A copy of the License is located at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# or in the "license" file accompanying this file. This file is distributed
+# on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+# express or implied. See the License for the specific language governing
+# permissions and limitations under the License.
 AWSTemplateFormatVersion: "2010-09-09"
-Description: AWS EFS Simple File Web - Deploys AWS EFS Simple File Website resources
+Description: (SO0145) Simple File Manager for Amazon EFS Solution Web %%VERSION%% 
 
 Parameters:
   FileManagerAPIEndpoint:
@@ -15,13 +27,20 @@ Mappings:
   EFSFileSimpleApp:
     SourceCode:
       S3Bucket: "%%REGIONAL_BUCKET_NAME%%"
-      CodeKeyPrefix: "efs_file_manager/%%VERSION%%"
-      TemplateKeyPrefix: "efs_file_manager/%%VERSION%%"
-      WebsitePrefix: "efs_file_manager/%%VERSION%%/web"
+      CodeKeyPrefix: "simple-file-manager-for-amazon-efs/%%VERSION%%"
+      TemplateKeyPrefix: "simple-file-manager-for-amazon-efs/%%VERSION%%"
+      WebsitePrefix: "simple-file-manager-for-amazon-efs/%%VERSION%%/website"
 
 Resources:
   WebsiteBucketNameFunction:
     Type: AWS::Lambda::Function
+    Metadata:
+        cfn_nag:
+          rules_to_suppress:
+            - id: W89
+              reason: "Custom resource deployed in default VPC"
+            - id: W92
+              reason: "ReservedConcurrentExecutions not needed since this function runs once when CloudFormation deploys"
     Properties:
       Code:
         ZipFile: |
@@ -60,8 +79,12 @@ Resources:
             Version: 2012-10-17
             Statement:
               - Effect: Allow
-                Action: ['logs:*']
-                Resource: 'arn:aws:logs:*:*:*'
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: 
+                  !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*
   GetWebsiteBucketName:
     Type: Custom::CustomResource
     Properties:
@@ -113,7 +136,6 @@ Resources:
                 aws:SecureTransport: false
 
   CopyWebSource:
-    DependsOn: EFSFileSimpleWebsiteBucket
     Type: Custom::WebsiteDeployHelper
     Properties:
       ServiceToken: !GetAtt WebsiteDeployHelper.Arn
@@ -150,9 +172,14 @@ Resources:
 
   EFSFileSimpleWebsiteDistribution:
     Type: AWS::CloudFront::Distribution
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W70
+            reason: "Cloudfront protocol version TLS 1.2"
     Properties:
       DistributionConfig:
-        Comment: "Website distribution for Content Analysis Solution"
+        Comment: "Website distribution for Simple File Manager for EFS Solution"
         Logging:
           Bucket: !Sub "${EFSFileSimpleWebsiteBucket}.s3.amazonaws.com"
           Prefix: cf_logs/
@@ -243,6 +270,13 @@ Resources:
 
   WebsiteDeployHelper:
     Type: AWS::Lambda::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: "Custom resource deployed in default VPC"
+          - id: W92
+            reason: "ReservedConcurrentExecutions not needed since this function runs once when CloudFormation deploys"
     Properties:
       Code:
         S3Bucket: !Join ["-", [!FindInMap ["EFSFileSimpleApp", "SourceCode", "S3Bucket"], Ref: "AWS::Region"]]

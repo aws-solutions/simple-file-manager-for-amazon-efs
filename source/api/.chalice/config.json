@@ -2,7 +2,8 @@
   "version": "2.0",
   "app_name": "api",
   "environment_variables": {
-    "botoConfig": "{}"
+    "botoConfig": "{}",
+    "stackPrefix": ""
   },
   "stages": {
     "dev": {

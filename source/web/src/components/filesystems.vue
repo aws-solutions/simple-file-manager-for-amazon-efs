@@ -11,13 +11,16 @@
         </template>
         <template v-slot:cell(managed)="data">
             <div v-if="data.value === true">
-                <p>{{data.value}}</p>
+                <a :href="`/details/${data.item.file_system_id}`" v-b-tooltip.hover title="Click to unregister file system.">{{ data.value }}</a>
+            </div>
+            <div v-else-if="data.value === 'Deleting'">
+                <b-link href="/" v-b-tooltip.hover title="Stack deletion can take several minutes. Click to refresh.">{{data.value}}</b-link>
             </div>
             <div v-else-if="data.value === 'Creating'">
-                <b-link href="/" v-b-tooltip.hover title="Lambda creation can take several minutes. Click to refresh.">{{data.value}}</b-link>
+                <b-link href="/" v-b-tooltip.hover title="Stack creation can take several minutes. Click to refresh.">{{data.value}}</b-link>
             </div>
             <div v-else>
-                <a :href="`/configure/${data.item.file_system_id}`">{{ data.value }}</a>
+                <a :href="`/configure/${data.item.file_system_id}`" v-b-tooltip.hover title="Click to onboard file system.">{{ data.value }}</a>
             </div>
         </template>
     </b-table>

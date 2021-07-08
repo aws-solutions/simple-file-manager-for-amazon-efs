@@ -1,12 +1,22 @@
-# Serverless Limit Monitor Solution
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
-# template for serverless-limit-monitor-solution
-# **DO NOT DELETE**
+# Licensed under the Apache License, Version 2.0 (the "License").
+# You may not use this file except in compliance with the License.
+# A copy of the License is located at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# or in the "license" file accompanying this file. This file is distributed
+# on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+# express or implied. See the License for the specific language governing
+# permissions and limitations under the License.
+#
+# Template for Simple File Manager for Amazon EFS Solution
 #
 # author: aws-solutions-builder@
 AWSTemplateFormatVersion: 2010-09-09
 
-Description: (SO0668) - Solution - Master Template
+Description: (SO0145) Simple File Manager for Amazon EFS Solution Main %%VERSION%% 
 
 Parameters:
   AdminEmail:
@@ -18,14 +28,19 @@ Mappings:
     General:
       GlobalS3Bucket: "%%GLOBAL_BUCKET_NAME%%"
       RegionalS3Bucket: "%%REGIONAL_BUCKET_NAME%%"
-      CodeKeyPrefix: "efs_file_manager/%%VERSION%%"
-      TemplateKeyPrefix: "efs_file_manager/%%VERSION%%"
+      CodeKeyPrefix: "simple-file-manager-for-amazon-efs/%%VERSION%%"
+      TemplateKeyPrefix: "simple-file-manager-for-amazon-efs/%%VERSION%%"
 
 Resources:
   # File Manager API Handler IAM Role
   # TODO: Scope some of the inline policies down
   EFSFileManagerIamRole:
     Type: "AWS::IAM::Role"
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "* resource needed for ec2:DescribeSecurityGroups and lambda:CreateFunction in this policy"
     Properties:
       AssumeRolePolicyDocument:
         Version: 2012-10-17
@@ -46,15 +61,15 @@ Resources:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: "*"
+                Resource: 
+                  !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+              - Effect: Allow
+                Action:
+                  - "iam:CreateRole"
+                Resource: "arn:aws:iam::*:*"
               - Effect: Allow
                 Action:
                   - "lambda:CreateFunction"
-                  - "lambda:InvokeFunction"
-                  - "lambda:GetFunction"
-                  - "iam:CreateRole"
-                  - "iam:AttachRolePolicy"
-                  - "elasticfilesystem:DescribeMountTargetSecurityGroups"
                   - "ec2:DescribeSecurityGroups"
                   - "ec2:DescribeSubnets"
                   - "ec2:DescribeVpcs"
@@ -62,19 +77,52 @@ Resources:
               - Effect: Allow
                 Action:
                   - "elasticfilesystem:DescribeMountTargets"
-                  - "elasticfilesystem:DeleteAccessPoint"
                   - "elasticfilesystem:DescribeFileSystems"
                   - "elasticfilesystem:CreateAccessPoint"
+                  - "elasticfilesystem:DescribeAccessPoints"
+                  - "elasticfilesystem:DescribeMountTargetSecurityGroups"
                 Resource:
                   - "arn:aws:elasticfilesystem:*:*:file-system/*"
                   - "arn:aws:elasticfilesystem:*:*:access-point/*"
-              # TODO: Add iam:passedtoservice condition key
+                  - "arn:aws:elasticfilesystem:*:*:*"
               - Effect: Allow
                 Action:
                   - "iam:PassRole"
                 Resource:
-                  - "arn:aws:iam::*:role/fs-*"
-
+                  - "arn:aws:iam::*:role/fs-*-manager-role"
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: lambda.amazonaws.com
+              - Effect: Allow
+                Action: 
+                  - "iam:GetRole"
+                Resource:
+                  - "arn:aws:iam::*:role/fs-*-manager-role"
+              - Effect: Allow
+                Action:
+                  - "elasticfilesystem:DeleteAccessPoint"
+                Resource: "arn:aws:elasticfilesystem:*:*:access-point/*"
+                Condition:
+                  StringEquals:
+                    aws:ResourceTag/Name: "simple-file-manager-access-point"
+              - Effect: Allow
+                Action:
+                  - "iam:DetachRolePolicy"
+                  - "iam:AttachRolePolicy"
+                  - "iam:DeleteRole"
+                Resource: "arn:aws:iam::*:role/fs-*-manager-role"
+              - Effect: Allow
+                Action:
+                  - "lambda:InvokeFunction"
+                  - "lambda:GetFunction"
+                  - "lambda:DeleteFunction"
+                Resource: "arn:aws:lambda:*:*:function:fs-*-manager-lambda"
+              - Effect: Allow
+                Action:
+                  - "cloudformation:CreateStack"
+                  - "cloudformation:DeleteStack"
+                  - "cloudformation:DescribeStacks"
+                Resource: "arn:aws:cloudformation:*:*:stack/*"
 
   # File Manager API stack
   EFSFileManagerAPI:
@@ -104,6 +152,7 @@ Resources:
             "filemanagerapi.zip",
             ],
           ]
+        stackPrefix: !Sub "${AWS::StackName}"
 
   # Deploy Authentication stack.
   EFSFileAuthentication:

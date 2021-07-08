@@ -1,8 +1,19 @@
 #!/bin/bash
+######################################################################################################################
+#  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.                                                #
+#                                                                                                                    #
+#  Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance    #
+#  with the License. A copy of the License is located at                                                             #
+#                                                                                                                    #
+#      http://www.apache.org/licenses/LICENSE-2.0                                                                    #
+#                                                                                                                    #
+#  or in the 'license' file accompanying this file. This file is distributed on an 'AS IS' BASIS, WITHOUT WARRANTIES #
+#  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions    #
+#  and limitations under the License.                                                                                #
+######################################################################################################################
+
+
 ###############################################################################
-# Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
 # PURPOSE:
 #   Build cloud formation templates for the %%%%%%%%
 # USAGE:
@@ -18,7 +29,6 @@
 #
 #     -h | --help       Print usage
 #     -v | --verbose    Print script debug info
-
 #
 ###############################################################################
 
@@ -209,7 +219,7 @@ echo "CloudFormation Templates"
 echo "------------------------------------------------------------------------------"
 
 echo "Preparing template files:"
-cp "$build_dir/efs-file-manager.yaml" "$global_dist_dir/efs-file-manager.template"
+cp "$build_dir/simple-file-manager-for-amazon-efs.yaml" "$global_dist_dir/simple-file-manager-for-amazon-efs.template"
 cp "$build_dir/efs-file-manager-web.yaml" "$global_dist_dir/efs-file-manager-web.template"
 cp "$build_dir/efs-file-manager-auth.yaml" "$global_dist_dir/efs-file-manager-auth.template"
 
@@ -221,9 +231,9 @@ new_global_bucket="s/%%GLOBAL_BUCKET_NAME%%/$global_bucket/g"
 new_regional_bucket="s/%%REGIONAL_BUCKET_NAME%%/$regional_bucket/g"
 new_version="s/%%VERSION%%/$version/g"
 # Update templates in place. Copy originals to [filename].orig
-sed -i.orig -e "$new_global_bucket" "$global_dist_dir/efs-file-manager.template"
-sed -i.orig -e "$new_regional_bucket" "$global_dist_dir/efs-file-manager.template"
-sed -i.orig -e "$new_version" "$global_dist_dir/efs-file-manager.template"
+sed -i.orig -e "$new_global_bucket" "$global_dist_dir/simple-file-manager-for-amazon-efs.template"
+sed -i.orig -e "$new_regional_bucket" "$global_dist_dir/simple-file-manager-for-amazon-efs.template"
+sed -i.orig -e "$new_version" "$global_dist_dir/simple-file-manager-for-amazon-efs.template"
 
 # Update templates in place. Copy originals to [filename].orig
 sed -i.orig -e "$new_global_bucket" "$global_dist_dir/efs-file-manager-web.template"
@@ -296,51 +306,84 @@ npm install
 echo "Compiling the vue app"
 npm run build
 echo "Built demo webapp"
-# Remove old web
-rm -rf "$regional_dist_dir/web"
+# Remove old website
+rm -rf "$regional_dist_dir/website"
 # Now we have a dist directory in web that we can move to dist_dir
-mv "./dist/" "$regional_dist_dir/web"
+mv "./dist/" "$regional_dist_dir/website"
 
 
 echo "------------------------------------------------------------------------------"
-echo "Building Website CFN Helper Custom Resource VueJS"
+echo "Generate webapp manifest file"
+echo "------------------------------------------------------------------------------"
+# This manifest file contains a list of all the webapp files. It is necessary in
+# order to use the least privileges for deploying the webapp.
+#
+# Details: The website_helper.py Lambda function needs this list in order to copy
+# files from $regional_dist_dir/website to the SimpleFileManagerWebsiteBucket (see efs-file-manager-web.yaml).  Since the manifest file is computed during build
+# time, the website_helper.py Lambda can use that to figure out what files to copy
+# instead of doing a list bucket operation, which would require ListBucket permission.
+# Furthermore, the S3 bucket used to host AWS solutions (s3://solutions-reference)
+# disallows ListBucket access, so the only way to copy files from
+# s3://solutions-reference/simple-file-manager-for-amazon-efs/latest/website to
+# SimpleFileManagerWebsiteBucket is to use said manifest file.
+#
+cd $regional_dist_dir"/website/" || exit 1
+manifest=(`find . -type f | sed 's|^./||'`)
+manifest_json=$(IFS=,;printf "%s" "${manifest[*]}")
+echo "[\"$manifest_json\"]" | sed 's/,/","/g' > $helper_dir/webapp-manifest.json
+cat $helper_dir/webapp-manifest.json
+
+echo "------------------------------------------------------------------------------"
+echo "Build website helper function"
 echo "------------------------------------------------------------------------------"
 
 echo "Building website helper function"
 cd "$helper_dir" || exit 1
 [ -e dist ] && rm -r dist
 mkdir -p dist
-zip -q -g ./dist/websitehelper.zip ./website_helper.py
+zip -q -g ./dist/websitehelper.zip ./website_helper.py webapp-manifest.json
+
 cp "./dist/websitehelper.zip" "$regional_dist_dir/websitehelper.zip"
 echo "Cleaning up website helper function"
 rm -rf ./dist
 
 
+# Skip copy dist to S3 if building for solution builder because
+# that pipeline takes care of copying the dist in another script.
+if [ "$global_bucket" != "solutions-features-reference" ] && [ "$global_bucket" != "solutions-reference" ] && [ "$global_bucket" != "solutions-test-reference" ]; then
+    
+    echo "------------------------------------------------------------------------------"
+    echo "Validate user is valid owner of S3 bucket"
+    echo "------------------------------------------------------------------------------"
+    # Get account id
+    account_id=$(aws sts get-caller-identity --query Account --output text)
+    if [ $? -ne 0 ]; then
+        msg "ERROR: Failed to get AWS account ID"
+        exit 1
+    fi
+    # Validate user is valid owner of S3 bucket
+    aws s3api head-bucket --bucket ${regional_bucket}-${region} --expected-bucket-owner $account_id
 
+    echo "------------------------------------------------------------------------------"
+    echo "Copy dist to S3"
+    echo "------------------------------------------------------------------------------"
+    cd "$build_dir"/ || exit 1
+    echo "Copying the prepared distribution to:"
+    echo "s3://$global_bucket/simple-file-manager-for-amazon-efs/$version/"
+    echo "s3://${regional_bucket}-${region}/simple-file-manager-for-amazon-efs/$version/"
+    set -x
+    aws s3 sync $global_dist_dir s3://$global_bucket/simple-file-manager-for-amazon-efs/$version/
+    aws s3 sync $regional_dist_dir s3://${regional_bucket}-${region}/simple-file-manager-for-amazon-efs/$version/
+    set +x
 
+    echo "------------------------------------------------------------------------------"
+    echo "S3 packaging complete"
+    echo "------------------------------------------------------------------------------"
 
-
-
-
-echo "------------------------------------------------------------------------------"
-echo "Copy dist to S3"
-echo "------------------------------------------------------------------------------"
-cd "$build_dir"/ || exit 1
-echo "Copying the prepared distribution to:"
-echo "s3://$global_bucket/efs_file_manager/$version/"
-echo "s3://${regional_bucket}-${region}/efs_file_manager/$version/"
-set -x
-aws s3 sync $global_dist_dir s3://$global_bucket/efs_file_manager/$version/
-aws s3 sync $regional_dist_dir s3://${regional_bucket}-${region}/efs_file_manager/$version/
-set +x
-
-echo "------------------------------------------------------------------------------"
-echo "S3 packaging complete"
-echo "------------------------------------------------------------------------------"
-
-echo ""
-echo "Template to deploy:"
-echo "TEMPLATE='"https://"$global_bucket"."$s3domain"/efs_file_manager/"$version"/efs-file-manager.template"'"
+    echo ""
+    echo "Template to deploy:"
+    echo "TEMPLATE='"https://"$global_bucket"."$s3domain"/simple-file-manager-for-amazon-efs/"$version"/simple-file-manager-for-amazon-efs.template"'"
+fi 
 
 cleanup
 echo "Done"

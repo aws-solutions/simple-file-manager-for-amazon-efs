@@ -1,3 +1,16 @@
+######################################################################################################################
+#  Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.                                                #
+#                                                                                                                    #
+#  Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance    #
+#  with the License. A copy of the License is located at                                                             #
+#                                                                                                                    #
+#      http://www.apache.org/licenses/LICENSE-2.0                                                                    #
+#                                                                                                                    #
+#  or in the 'license' file accompanying this file. This file is distributed on an 'AS IS' BASIS, WITHOUT WARRANTIES #
+#  OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions    #
+#  and limitations under the License.                                                                                #
+######################################################################################################################
+
 import boto3
 import json
 import logging
@@ -98,22 +111,20 @@ def copy_source(event, context):
 
                 deployment_bucket = s3.Bucket(website_bucket)
 
-                objects = s3.Bucket(name=source_bucket).objects.filter(Prefix='{k}/'.format(k=source_key))
-
-                for s3_object in objects:
-                    old_key = s3_object.key
-                    LOGGER.info(old_key)
-                    try:
-                        new_key = old_key.split('web/')[1]
-                    # Only pickup items under the "web" prefix
-                    except IndexError:
-                        pass
-                    else:
-                        source = {"Bucket": source_bucket, "Key": old_key}
-                        deployment_bucket.copy(source, '{key}'.format(key=new_key))
-                        if replace_env_variables is True and new_key == "runtimeConfig.json":
+                with open('./webapp-manifest.json') as file:
+                    manifest = json.load(file)
+                    print('UPLOADING FILES::')
+                    for key in manifest:
+                        print('s3://'+source_bucket+'/'+source_key+'/'+key)
+                        copy_source = {
+                            'Bucket': source_bucket,
+                            'Key': source_key+'/'+key
+                        }
+                        s3.meta.client.copy(copy_source, website_bucket, key)
+                        if replace_env_variables is True and key == "runtimeConfig.json":
                             LOGGER.info("updating runtimeConfig.json")
-                            write_to_s3(event, context, website_bucket, new_key, json.dumps(new_variables))
+                            write_to_s3(event, context, website_bucket, key, json.dumps(new_variables))
+
         except Exception as e:
             LOGGER.info("Unable to copy website source code into the website bucket: {e}".format(e=e))
             send_response(event, context, "FAILED", {"Message": "Unexpected event received from CloudFormation"})

@@ -1,5 +1,17 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License").
+# You may not use this file except in compliance with the License.
+# A copy of the License is located at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# or in the "license" file accompanying this file. This file is distributed
+# on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+# express or implied. See the License for the specific language governing
+# permissions and limitations under the License.
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Simple File Manager for Amazon EFS - Deploys the Simple File Manager Cognito Infrastructure
+Description: (SO0145) Simple File Manager for Amazon EFS Solution Auth %%VERSION%% 
 
 Parameters:
   AdminEmail:
@@ -36,6 +48,7 @@ Resources:
     Type: AWS::Cognito::UserPoolClient
     Properties:
       UserPoolId: !Ref SimpleFileManagerUserPool
+      PreventUserExistenceErrors: "ENABLED"
 
     # Service - cognito / security infrastructure
 
@@ -45,6 +58,13 @@ Resources:
 
   CognitoRoleMappingTransformer:
       Type: AWS::Lambda::Function
+      Metadata:
+        cfn_nag:
+          rules_to_suppress:
+            - id: W89
+              reason: "Custom resource deployed in default VPC"
+            - id: W92
+              reason: "ReservedConcurrentExecutions not needed since this function runs once when CloudFormation deploys"
       Properties:
         Code:
           ZipFile: |
@@ -96,7 +116,7 @@ Resources:
                     - 'logs:CreateLogGroup'
                     - 'logs:CreateLogStream'
                     - 'logs:PutLogEvents'
-                  Resource: 'arn:aws:logs:*:*:*'
+                  Resource: 'arn:aws:logs:*'
 
   SimpleFileManagerIdentityPool:
     Type: AWS::Cognito::IdentityPool
@@ -123,6 +143,11 @@ Resources:
 
   CognitoStandardAuthDefaultRole:
     Type: "AWS::IAM::Role"
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: F38
+            reason: "* resource is used to deny access in this policy"
     Properties:
       AssumeRolePolicyDocument:
         Version: "2012-10-17"

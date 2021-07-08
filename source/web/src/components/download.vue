@@ -37,8 +37,14 @@ export default {
   },
   methods: {
     async downloadChunk (requestParams) {
-          let response = await API.get('fileManagerApi', '/api/objects/' + this.$route.params.id + '/download', requestParams)
-          return response
+          try {
+            let response = await API.get('fileManagerApi', '/api/objects/' + this.$route.params.id + '/download', requestParams)
+            return response
+          }
+          catch (error) {
+            let formattedResponse = {"type": "danger", "message": "Download did not complete successfully. Check API logs."}
+            this.$emit("downloadCompleted", formattedResponse)
+          }
       },
     async downloadFile () {
           if (this.dzchunkindex == null && this.dzchunkbyteoffset == null) {
@@ -97,8 +103,9 @@ export default {
                   link.download = this.filename
                   
                   link.click()
-
-                  this.$emit("downloadCompleted")
+                  
+                  let formattedResponse = {"type": "success", "message": "Download completed successfully!"}
+                  this.$emit("downloadCompleted", formattedResponse)
               }
               else {
                   let chunkData = chunk.chunk_data
