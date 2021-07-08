@@ -7,8 +7,6 @@ Simple File Manager provides access to Amazon EFS through a RESTful API and resp
 
 You can deploy the open source solution by clicking one of the one-click deployment links in the install section below.
 
-***Note: This project is in an early beta stage. Please report bugs if you find them.***
-
 # Install
 
 Region| Launch
