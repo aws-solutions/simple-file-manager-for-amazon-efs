@@ -1,5 +1,6 @@
 <template>
 <div>
+    <b-row>
     <b-table striped hover :items="filesystems">
         <template v-slot:cell(file_system_id)="data">
             <div v-if="data.item.managed === true">
@@ -24,12 +25,16 @@
             </div>
         </template>
     </b-table>
-        <div v-if="noFileSystemsFound">
-            <p>No Amazon EFS file systems found. 
-                Please create an EFS filesystem in the 
-                <a href="https://console.aws.amazon.com/efs/home/file-systems">AWS console</a>
-            </p>
-        </div>
+    </b-row>
+    <div v-if="noFileSystemsFound">
+        <p>No Amazon EFS file systems found. 
+            Please create an EFS filesystem in the 
+            <a href="https://console.aws.amazon.com/efs/home/file-systems">AWS console</a>
+        </p>
+    </div>
+    <div id="moreFilesystemsBtn" v-if="paginationToken != null">
+            <b-button @click=listFilesystems()>More</b-button>
+    </div>
 </div>
 </template>
 
@@ -41,7 +46,8 @@ export default {
   data() {
       return {
           filesystems: [], 
-          noFileSystemsFound: false
+          noFileSystemsFound: false,
+          paginationToken: null
       }
   },
   mounted: function () {
@@ -49,14 +55,32 @@ export default {
   },
   methods: {
       async listFilesystems() {
-          try {
-              let response = await API.get('fileManagerApi', '/api/filesystems/')
-              if(response.length == 0){
-                  this.noFileSystemsFound = true
-              }else{
-                  this.filesystems = response
-              }
+        let apiPath = ''
+        if (this.paginationToken == null) {
+            apiPath = '/api/filesystems/'
+        }    
+        else {
+            apiPath = '/api/filesystems/?cursor=' + this.paginationToken
+        }
+
+        try {
+            let response = await API.get('fileManagerApi', apiPath)
+            let filesystems = response.filesystems
+            if (filesystems.length == 0) {
+                this.noFileSystemsFound = true
+            }
+            else {
+                filesystems.forEach(filesystem => this.filesystems.push(filesystem))
+            }
+            
+            if ("paginationToken" in response) {
+                this.paginationToken = response.paginationToken
+            }
+            else {
+                this.paginationToken = null
+            }
           }
+          
           catch (error) {
               alert('Unable to list filesystems, check api logs')
               console.log(error)
@@ -73,5 +97,9 @@ export default {
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
 
+#moreFilesystemsBtn {
+    float: right;
+
+}
 
 </style>

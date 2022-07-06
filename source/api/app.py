@@ -256,8 +256,28 @@ def list_filesystems():
     :returns: Object containing filesystems
     :raises ChaliceViewError
     """
+    
+
+    query_params = app.current_request.query_params
+
+    cursor = None
+    
+    if query_params is not None:
+        try:
+            cursor = query_params['cursor']
+        except KeyError:
+            pass
+    
     try:
-        response = EFS.describe_file_systems()
+        if cursor:
+            response = EFS.describe_file_systems(
+                MaxItems=10,
+                Marker=cursor
+            )
+        else:
+            response = EFS.describe_file_systems(
+                MaxItems=10
+            )
     except botocore.exceptions.ClientError as error:
         app.log.error(error)
         raise ChaliceViewError("Check API logs")
@@ -272,7 +292,12 @@ def list_filesystems():
                 raise ChaliceViewError("Check API logs")
             else:
                 formatted_filesystems.append(formatted)
-        return formatted_filesystems
+        if 'NextMarker' in response:
+            pagination_token = response['NextMarker']
+            return {"filesystems": formatted_filesystems, "paginationToken": pagination_token}
+    
+        else:
+            return {"filesystems": formatted_filesystems}
 
 
 @app.route('/filesystems/{filesystem_id}', methods=['GET'], cors=True, authorizer=AUTHORIZER)
