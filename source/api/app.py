@@ -548,14 +548,14 @@ def list_objects(filesystem_id):
     :returns: Filesystem operation response
     :raises ChaliceViewError, BadRequestError
     """
-    if app.current_request.query_params['path']:
+    try:
         path = app.current_request.query_params['path']
+    except KeyError as error:
+        app.log.error('Missing required query param: {e}'.format(e=error))
+        raise BadRequestError('Missing required query param: {e}'.format(e=error))
     else:
-        app.log.error('Missing required query param: path')
-        raise BadRequestError('Missing required query param: path')
+        filemanager_event = {"operation": "list", "path": path}
+        operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
+        error_message = "Error listing files"
 
-    filemanager_event = {"operation": "list", "path": path}
-    operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
-    error_message = "Error listing files"
-
-    return format_operation_response(operation_result, error_message)
+        return format_operation_response(operation_result, error_message)

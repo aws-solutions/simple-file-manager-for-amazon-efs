@@ -1,0 +1,6 @@
+pytest
+pytest-cov
+pytest-mock
+chalice
+boto3
+botocore

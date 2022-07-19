@@ -12,16 +12,11 @@
 ######################################################################################################################
 
 import os
-from os import walk
 import base64
 import math
 # File manager operation events:
 # list: {"operation": "list", "path": "$dir"}
 # upload: {"operation": "upload", "path": "$dir", "form_data": "$form_data"}
-
-
-def modify(event):
-    return None
 
 
 def delete(event):
@@ -140,20 +135,18 @@ def list(event):
     try:
         path = event['path']
     except KeyError:
-        raise Exception('Missing required parameter in event: "path"')
+        return {"message": "missing required parameter: path", "statusCode": 400}
 
     try:
-        # TODO: Mucchhhh better thinking around listing directories
         dir_items = []
         file_items = []
-        for (dirpath, dirnames, filenames) in walk(path):
+        for (dirpath, dirnames, filenames) in os.walk(path):
             dir_items.extend(dirnames)
             file_items.extend(filenames)
             break
-    # TODO: narrower exception scope and proper debug output
     except Exception as error:
         print(error)
-        raise Exception(error)
+        return {"message": "unable to list files", "statusCode": 500}
     else:
         return {"path": path, "directiories": dir_items, "files": file_items, "statusCode": 200}
 
@@ -163,7 +156,7 @@ def lambda_handler(event, context):
     try:
         operation_type = event['operation']
     except KeyError:
-        raise Exception('Missing required parameter in event: "operation"')
+        return {"message": "missing required parameter: operation", "statusCode": 400}
     else:
         if operation_type == 'upload':
             upload_result = upload(event)
@@ -171,8 +164,6 @@ def lambda_handler(event, context):
         if operation_type == 'list':
             list_result = list(event)
             return list_result
-        if operation_type == 'modify':
-            modify(event)
         if operation_type == 'delete':
             delete_result = delete(event)
             return delete_result
