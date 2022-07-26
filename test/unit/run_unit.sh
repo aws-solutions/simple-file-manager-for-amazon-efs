@@ -49,7 +49,7 @@ if [ "$1" = "" ]; then
 
 elif [ "$1" = "api" ]; then
     echo "Running api unit tests"
-    pytest api/ -s -W ignore::DeprecationWarning -W ignore::UserWarning -p no:cacheprovider --cov=../../source/api/ --cov-report html --cov-append api
+    pytest api/ -s -W ignore::DeprecationWarning -W ignore::UserWarning -p no:cacheprovider --cov=../../source/api/ --cov-report xml --cov-append api
     if [ $? -eq 0 ]; then
 	    exit 0
     else
@@ -57,7 +57,7 @@ elif [ "$1" = "api" ]; then
     fi
 elif [ "$1" = "manager" ]; then
     echo "Running file manager lambda unit tests"
-    pytest manager/ -s -W ignore::DeprecationWarning -p no:cacheprovider --cov=../../source/api/chalicelib/ --cov-report html --cov-append manager
+    pytest manager/ -s -W ignore::DeprecationWarning -p no:cacheprovider --cov=../../source/api/chalicelib/ --cov-report xml --cov-append manager
     if [ $? -eq 0 ]; then
 	    exit 0
     else
