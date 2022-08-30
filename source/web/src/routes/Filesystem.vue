@@ -136,9 +136,15 @@ export default {
           this.dirs = []
           this.files = []
           this.retrieveObjects()
-          this.$refs['download'].hide()
-          this.$refs['upload'].hide()
-          this.$refs['makedir'].hide()
+          if (this.$refs['download']) {
+            this.$refs['download'].hide()
+          }
+          if (this.$refs['upload']) {
+            this.$refs['upload'].hide()
+          }
+          if (this.$refs['makedir']) {
+            this.$refs['makedir'].hide()
+          }
           this.active = false
           this.alertMessage = response.message
           this.alertType = response.type
