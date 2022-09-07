@@ -47,6 +47,10 @@ export default {
     }
   },
   methods: {
+    async postDirData (id, params) {
+      let response = await API.post('fileManagerApi', '/api/objects/' + id + '/dir', params)
+      return response
+    },
     async createDirectory (name, path) {
           let dir_data = {"path": path, "name": name}
           const params = {
@@ -55,9 +59,11 @@ export default {
                 "Content-Type": "application/json"
           },
          }
-          let formattedResponse = {"type": "", "message": ""}
+         let id = this.$route.params.id
+         let response = await this.postDirData(id, params)
+         let formattedResponse = {"type": "", "message": ""}
           try {
-              let response = await API.post('fileManagerApi', '/api/objects/' + this.$route.params.id + '/dir', params)
+              
               if (response.statusCode != 200) {
                 formattedResponse.type = "danger"
                 formattedResponse.message = "Could not create directory. Check API logs. "

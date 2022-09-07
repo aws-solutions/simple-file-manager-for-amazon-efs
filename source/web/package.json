@@ -17,6 +17,7 @@
     "bootstrap": "^4.5.0",
     "bootstrap-vue": "^2.15.0",
     "core-js": "^3.6.5",
+    "flush-promises": "^1.0.2",
     "vue": "^2.6.11",
     "vue-router": "^3.4.3",
     "vue-stepper-component": "^1.0.0",

@@ -54,6 +54,10 @@ export default {
       this.listFilesystems()
   },
   methods: {
+      async getFileSystemData(apiPath) {
+        let response = await API.get('fileManagerApi', apiPath)
+        return response
+      },
       async listFilesystems() {
         let apiPath = ''
         if (this.paginationToken == null) {
@@ -64,8 +68,8 @@ export default {
         }
 
         try {
-            let response = await API.get('fileManagerApi', apiPath)
-            let filesystems = response.filesystems
+            let filesystemData = await this.getFileSystemData(apiPath)
+            let filesystems = filesystemData.filesystems
             if (filesystems.length == 0) {
                 this.noFileSystemsFound = true
             }
@@ -73,8 +77,8 @@ export default {
                 filesystems.forEach(filesystem => this.filesystems.push(filesystem))
             }
             
-            if ("paginationToken" in response) {
-                this.paginationToken = response.paginationToken
+            if ("paginationToken" in filesystemData) {
+                this.paginationToken = filesystemData.paginationToken
             }
             else {
                 this.paginationToken = null
