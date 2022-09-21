@@ -13,6 +13,7 @@
 """API for Simple File Manager for Amazon EFS"""
 import os
 import logging
+import ipaddress
 import json
 import botocore
 from botocore.config import Config
@@ -41,6 +42,7 @@ AUTHORIZER = IAMAuthorizer()
 EFS = boto3.client('efs', config=CONFIG)
 SERVERLESS = boto3.client('lambda', config=CONFIG)
 CFN = boto3.client('cloudformation', config=CONFIG)
+EC2 = boto3.client('ec2', config=CONFIG)
 
 
 # Helper functions
@@ -246,6 +248,52 @@ def format_operation_response(result, error_message):
     return response
 
 
+def test_nfs_access(group, mount_target_ip):
+    rules = EC2.describe_security_group_rules(
+        Filters=[
+                {
+                    'Name': 'group-id',
+                    'Values': [group]
+                }
+            ]
+        )
+
+    contains_valid_rule = False
+
+    for rule in rules['SecurityGroupRules']:
+        # check if rule is inbound
+        if rule['IsEgress'] is False:
+            if 'ReferencedGroupInfo' in rule:
+                # references a sg in the rule
+                ref_group_id = rule['ReferencedGroupInfo']['GroupId']
+                if ref_group_id == rule['GroupId']:
+                    if rule['IpProtocol'] == '-1' or rule['IpProtocol'] == 'tcp':
+                        if rule['FromPort'] and rule['ToPort'] == 2049 or rule['FromPort'] and rule['ToPort'] == -1:
+                            contains_valid_rule = True
+                        elif rule['FromPort'] <= 2049 <= rule['ToPort']:
+                            contains_valid_rule = True
+                        else:
+                            pass
+            elif 'CidrIpv4' in rule:
+                # references an ipv4 subnet
+                subnet = rule['CidrIpv4']
+                if ipaddress.ip_address(mount_target_ip) in ipaddress.ip_network(subnet):
+                    if rule['IpProtocol'] == '-1' or rule['IpProtocol'] == 'tcp':
+                        if rule['FromPort'] and rule['ToPort'] == 2049 or rule['FromPort'] and rule['ToPort'] == -1:
+                            contains_valid_rule = True
+                        elif rule['FromPort'] <= 2049 <= rule['ToPort']:
+                            contains_valid_rule = True
+                        else:
+                            pass
+            else:
+                # bad request
+                pass
+        else:
+            # outbound rule
+            pass
+
+    return contains_valid_rule
+
 # Routes
 
 @app.route('/filesystems', methods=["GET"], cors=True, authorizer=AUTHORIZER)
@@ -324,13 +372,13 @@ def describe_filesystem(filesystem_id):
     authorizer=AUTHORIZER)
 def get_netinfo_for_filesystem(filesystem_id):
     """
-    Retrieves network info for a specified filesystem
+    Retrieves mount target network info for a specified filesystem
 
     :param filesystem_id: The filesystem to get net info for
-    :returns: Filesystem network info
+    :returns: Filesystem mount target network info
     :raises ChaliceViewError
     """
-    netinfo = []
+    mount_target_info = []
     try:
         response = EFS.describe_mount_targets(
             FileSystemId=filesystem_id
@@ -343,6 +391,8 @@ def get_netinfo_for_filesystem(filesystem_id):
         app.log.debug(mount_targets)
         for target in mount_targets:
             mount_target_id = target['MountTargetId']
+            mount_target_ip = target['IpAddress']
+
             try:
                 response = EFS.describe_mount_target_security_groups(
                     MountTargetId=mount_target_id
@@ -352,11 +402,25 @@ def get_netinfo_for_filesystem(filesystem_id):
                 raise ChaliceViewError
             else:
                 security_groups = response['SecurityGroups']
-                vpc_item = {'{id}'.format(id=mount_target_id): {'security_groups': \
-                    security_groups, 'subnet_id': target['SubnetId']}}
-                netinfo.append(vpc_item)
-
-    return netinfo
+                
+                # test security groups to see if the mount target can be used
+                valid_security_groups = []
+                for group in security_groups:
+                    is_valid_group = test_nfs_access(group, mount_target_ip)
+                    if is_valid_group:
+                        valid_security_groups.append(group)
+                    else:
+                        pass
+                
+                mount_target_item = {'{id}'.format(id=mount_target_id): {'security_groups': \
+                    valid_security_groups, 'subnet_id': target['SubnetId']}}
+                
+                mount_target_info.append(mount_target_item)
+    
+    if len(mount_target_info) == 0:
+        raise BadRequestError('No mount target available with required network configuration. See the deployment guide for configuration details.')
+    else:
+        return mount_target_info
 
 
 @app.route('/filesystems/{filesystem_id}/lambda', methods=['POST'], cors=True, \
