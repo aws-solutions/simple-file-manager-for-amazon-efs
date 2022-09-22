@@ -30,6 +30,9 @@ TEMPLATE_PATH = os.path.join(
 SFM_CONFIG = json.loads(os.environ['botoConfig'])
 CONFIG = Config(**SFM_CONFIG)
 STACK_PREFIX = os.environ['stackPrefix']
+MANAGER_STACK_PREFIX = '{prefix}-ManagedResources-'.format(prefix=STACK_PREFIX)
+
+DEFAULT_ERROR_MESSAGE = 'Check API logs for more information'
 
 # Cognito resources
 # From cloudformation stack
@@ -99,8 +102,6 @@ def format_filesystem_response(filesystem):
 
     new_filesystem_object["file_system_id"] = filesystem_id
     new_filesystem_object["lifecycle_state"] = lifecycle_state
-    #new_filesystem_object["size_in_bytes"] = size_in_bytes
-    #new_filesystem_object["creation_time"] = creation_time
 
     return new_filesystem_object
 
@@ -122,8 +123,8 @@ def describe_manager_stack(filesystem_id):
     :returns: File manager stack details
     :raises ChaliceViewError
     """
-    stack_name = '{prefix}-ManagedResources-{filesystem}'.format(prefix=STACK_PREFIX, \
-        filesystem=filesystem_id)
+    stack_name = MANAGER_STACK_PREFIX + filesystem_id
+
     try:
         response = CFN.describe_stacks(
             StackName=stack_name,
@@ -147,8 +148,8 @@ def delete_manager_stack(filesystem_id):
     :returns: Deletion status
     :raises ChaliceViewError
     """
-    stack_name = '{prefix}-ManagedResources-{filesystem}'.format(prefix=STACK_PREFIX, \
-        filesystem=filesystem_id)
+    stack_name = MANAGER_STACK_PREFIX + filesystem_id
+
     try:
         response = CFN.delete_stack(
             StackName=stack_name,
@@ -173,8 +174,7 @@ def create_manager_stack(filesystem_id, uid, gid, path, subnet_ids, security_gro
     :returns: Create status
     :raises ChaliceViewError
     """
-    stack_name = '{prefix}-ManagedResources-{filesystem}'.format(prefix=STACK_PREFIX, \
-        filesystem=filesystem_id)
+    stack_name = MANAGER_STACK_PREFIX + filesystem_id
 
     template_body = read_template_file()
 
@@ -262,11 +262,10 @@ def list_filesystems():
 
     cursor = None
     
-    if query_params is not None:
-        try:
-            cursor = query_params['cursor']
-        except KeyError:
-            pass
+    try:
+        cursor = query_params['cursor']
+    except KeyError:
+        pass
     
     try:
         if cursor:
@@ -280,7 +279,7 @@ def list_filesystems():
             )
     except botocore.exceptions.ClientError as error:
         app.log.error(error)
-        raise ChaliceViewError("Check API logs")
+        raise ChaliceViewError(DEFAULT_ERROR_MESSAGE)
     else:
         filesystems = response['FileSystems']
         formatted_filesystems = []
@@ -289,7 +288,7 @@ def list_filesystems():
                 formatted = format_filesystem_response(filesystem)
             except botocore.exceptions.ClientError as error:
                 app.log.error(error)
-                raise ChaliceViewError("Check API logs")
+                raise ChaliceViewError(DEFAULT_ERROR_MESSAGE)
             else:
                 formatted_filesystems.append(formatted)
         if 'NextMarker' in response:
@@ -315,7 +314,7 @@ def describe_filesystem(filesystem_id):
         )
     except botocore.exceptions.ClientError as error:
         app.log.error(error)
-        raise ChaliceViewError("Check API logs")
+        raise ChaliceViewError(DEFAULT_ERROR_MESSAGE)
     else:
         return json.dumps(response, indent=4, sort_keys=True, default=str)
 
@@ -381,7 +380,7 @@ def create_filesystem_lambda(filesystem_id):
         path = json_body['path']
     except KeyError as error:
         app.log.error(error)
-        raise BadRequestError("Check API logs")
+        raise BadRequestError(DEFAULT_ERROR_MESSAGE)
 
     try:
         response = create_manager_stack(filesystem_id, uid, gid, path, subnet_ids, security_groups)
@@ -457,32 +456,35 @@ def download(filesystem_id):
     :returns: Filesystem operation response
     :raises ChaliceViewError, BadRequestError
     """
-    print(app.current_request.query_params)
+    app.log.debug(app.current_request.query_params)
+
+    query_params = app.current_request.query_params
+
     try:
-        path = app.current_request.query_params['path']
-        filename = app.current_request.query_params['filename']
+        path = query_params['path']
+        filename = query_params['filename']
     except KeyError as error:
         app.log.error('Missing required query param: {e}'.format(e=error))
         raise BadRequestError('Missing required query param: {e}'.format(e=error))
     else:
-        if 'dzchunkindex' and 'dzchunkbyteoffset' in app.current_request.query_params:
-            chunk_index = app.current_request.query_params['dzchunkindex']
-            chunk_offset = app.current_request.query_params['dzchunkbyteoffset']
-            filemanager_event = {"operation": "download", "path": path, "filename": filename, \
-                                 "chunk_data": {"dzchunkindex": int(chunk_index), \
-                                     "dzchunkbyteoffset": int(chunk_offset)}}
-            operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
-            payload_encoded = operation_result['Payload']
-            payload = json.loads(payload_encoded.read().decode("utf-8"))
-            return payload
-        elif 'dzchunkindex' and 'dzchunkbyteoffset' not in app.current_request.query_params:
+        try:
+            chunk_index = query_params['dzchunkindex']
+            chunk_offset = query_params['dzchunkbyteoffset']
+        except KeyError:
             filemanager_event = {"operation": "download", "path": path, "filename": filename}
             operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
             payload_encoded = operation_result['Payload']
             payload = json.loads(payload_encoded.read().decode("utf-8"))
             return payload
         else:
-            raise BadRequestError('Unsupported or missing query params')
+            filemanager_event = {"operation": "download", "path": path, "filename": filename, \
+                                 "chunk_data": {"dzchunkindex": int(chunk_index), \
+                                     "dzchunkbyteoffset": int(chunk_offset)}}
+            operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
+            payload_encoded = operation_result['Payload']
+            payload = json.loads(payload_encoded.read().decode("utf-8"))
+            
+            return payload
 
 
 @app.route('/objects/{filesystem_id}/dir', methods=['POST'], cors=True, authorizer=AUTHORIZER)
