@@ -35,10 +35,15 @@
                         <b-form-invalid-feedback :state="valid">
                             UID, GID, and Path must not be empty. The path must begin with a forward slash: /
                         </b-form-invalid-feedback>
-                        <b-button :disabled='!valid' type="submit">
-                            Submit
-                        <b-icon icon="Hammer" aria-hidden="true"></b-icon>
-                </b-button>
+                        <div v-if="!mountTargetNetinfo.securityGroups.length">
+                            <b-alert show variant="danger">No mount targets available for the filesystem with security group(s) configured for NFS access. See the deployment guide for further details.</b-alert>
+                        </div>
+                        <div v-else>
+                            <b-button :disabled='!valid' type="submit">
+                                    Submit
+                                <b-icon icon="Hammer" aria-hidden="true"></b-icon>
+                            </b-button>
+                        </div>
                 </b-form>
             </b-col>
             <b-col>
@@ -59,7 +64,8 @@ export default {
         processing: false,
         uid: '1000',
         gid: '1000',
-        path: '/efs'
+        path: '/efs',
+        mountTargetNetinfo: null
     }
   },
   computed: {
@@ -67,12 +73,15 @@ export default {
           return this.uid != "" && this.gid != "" && this.path != "" && this.path.charAt(0) == '/'
       }
   },
+  mounted: function () {
+      this.getFilesystemNetinfo()
+  },
   methods: {
       async onSubmit(evt) {
         evt.preventDefault();
 
         if (this.valid) {
-            let mountTargetNetinfo = await this.getFilesystemNetinfo()
+            let mountTargetNetinfo = this.mountTargetNetinfo
         
             mountTargetNetinfo['uid'] = this.uid
             mountTargetNetinfo['gid'] = this.gid
@@ -115,7 +124,7 @@ export default {
           try {
               let response = await API.get('fileManagerApi', '/api/filesystems/' + this.$route.params.id + '/netinfo')
               let formattedNetinfo = this.formatNetinfo(response)
-              return formattedNetinfo
+              this.mountTargetNetinfo = formattedNetinfo
           }
           catch (error) {
               alert('Unable to retrieve filesystem netinfo, check api logs')
