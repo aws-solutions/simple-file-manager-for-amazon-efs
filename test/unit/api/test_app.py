@@ -1,7 +1,7 @@
 import json
 import botocore.stub
 
-from service_responses import EFS, CFN, LAMBDA
+from service_responses import EFS, CFN, LAMBDA, EC2
 
 test_filesystem_id = 'fs-01234567'
 
@@ -46,7 +46,7 @@ def test_list_filesystems(test_client, efs_client_stub, cfn_client_stub):
     print('PASS')
 
 
-def test_get_netinfo_for_filesystem(test_client, efs_client_stub):
+def test_get_netinfo_for_filesystem(test_client, efs_client_stub, ec2_client_stub):
     print(f'GET /filesystems/{test_filesystem_id}/netinfo')
 
     efs_client_stub.add_response(
@@ -59,6 +59,12 @@ def test_get_netinfo_for_filesystem(test_client, efs_client_stub):
         'describe_mount_target_security_groups',
         expected_params={'MountTargetId': 'fsmt-12340abc'},
         service_response=EFS['describe_mount_target_security_groups']
+    )
+
+    ec2_client_stub.add_response(
+        'describe_security_group_rules',
+        expected_params={'Filters': [{'Name': 'group-id', 'Values': ['sg-4567abcd']}]},
+        service_response=EC2['describe_sec_rules']
     )
 
     response = test_client.http.get(f'/filesystems/{test_filesystem_id}/netinfo')

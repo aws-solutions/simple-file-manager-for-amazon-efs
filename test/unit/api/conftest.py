@@ -34,3 +34,10 @@ def lambda_client_stub(mock_env_variables):
     with Stubber(SERVERLESS) as stubber:
         yield stubber
         stubber.assert_no_pending_responses()
+
+@pytest.fixture
+def ec2_client_stub(mock_env_variables):
+    from app import EC2
+    with Stubber(EC2) as stubber:
+        yield stubber
+        stubber.assert_no_pending_responses()

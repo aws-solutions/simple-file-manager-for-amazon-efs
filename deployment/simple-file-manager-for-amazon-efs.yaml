@@ -73,6 +73,7 @@ Resources:
                   - "ec2:DescribeSecurityGroups"
                   - "ec2:DescribeSubnets"
                   - "ec2:DescribeVpcs"
+                  - "ec2:DescribeSecurityGroupRules"
                 Resource: "*"
               - Effect: Allow
                 Action:
