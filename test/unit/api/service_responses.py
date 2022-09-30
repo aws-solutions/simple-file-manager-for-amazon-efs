@@ -6,6 +6,73 @@ test_filesystem_id = 'fs-01234567'
 
 test_stack_name = f'testStackPrefix-ManagedResources-{test_filesystem_id}'
 
+ec2_describe_security_group_rules_response = {
+	'SecurityGroupRules': [{
+		'SecurityGroupRuleId': 'sgr-0123abc',
+		'GroupId': 'sg-4567abcd',
+		'GroupOwnerId': '',
+		'IsEgress': False,
+		'IpProtocol': '-1',
+		'FromPort': -1,
+		'ToPort': -1,
+		'ReferencedGroupInfo': {
+			'GroupId': 'sg-4567abcd',
+			'UserId': ''
+		},
+		'Tags': []
+	}, {
+		'SecurityGroupRuleId': 'sgr-0123abc',
+		'GroupId': 'sg-4567abcd',
+		'GroupOwnerId': '',
+		'IsEgress': False,
+		'IpProtocol': 'tcp',
+		'FromPort': 2049,
+		'ToPort': 2049,
+		'ReferencedGroupInfo': {
+			'GroupId': 'sg-4567abcd',
+			'UserId': ''
+		},
+		'Tags': []
+	}, {
+		'SecurityGroupRuleId': 'sgr-0123abc',
+		'GroupId': 'sg-4567abcd',
+		'GroupOwnerId': '',
+		'IsEgress': True,
+		'IpProtocol': '-1',
+		'FromPort': -1,
+		'ToPort': -1,
+		'CidrIpv4': '0.0.0.0/0',
+		'Tags': []
+	},
+    {
+		'SecurityGroupRuleId': 'sgr-0123abc',
+		'GroupId': 'sg-4567abcd',
+		'GroupOwnerId': '',
+		'IsEgress': False,
+		'IpProtocol': '-1',
+		'FromPort': -1,
+		'ToPort': -1,
+		'CidrIpv4': '0.0.0.0/0',
+		'Tags': []
+	}
+    ],
+	'ResponseMetadata': {
+		'RequestId': '',
+		'HTTPStatusCode': 200,
+		'HTTPHeaders': {
+			'x-amzn-requestid': '',
+			'cache-control': 'no-cache, no-store',
+			'strict-transport-security': 'max-age=31536000; includeSubDomains',
+			'vary': 'accept-encoding',
+			'content-type': 'text/xml;charset=UTF-8',
+			'transfer-encoding': 'chunked',
+			'date': 'Wed, 21 Sep 2022 20:02:50 GMT',
+			'server': 'AmazonEC2'
+		},
+		'RetryAttempts': 0
+	}
+}
+
 efs_describe_file_systems_no_marker_response = {
     'FileSystems': [
         {
@@ -173,3 +240,4 @@ lambda_invoke_download_response = {
 EFS = {'describe_file_systems_no_marker': efs_describe_file_systems_no_marker_response, 'describe_mount_targets': efs_describe_mount_targets_response, 'describe_mount_target_security_groups': efs_describe_mount_target_security_groups_response}
 CFN = {'describe_stacks': cfn_describe_stacks_response, 'create_stack': cfn_create_stack_response}
 LAMBDA = {'upload': lambda_invoke_upload_response, 'delete': lambda_invoke_delete_response, 'list': lambda_invoke_list_response, 'make_dir': lambda_invoke_make_dir_response, 'download': lambda_invoke_download_response}
+EC2 = {'describe_sec_rules': ec2_describe_security_group_rules_response}
