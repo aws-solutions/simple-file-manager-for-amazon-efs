@@ -70,8 +70,8 @@ def proxy_operation_to_efs_lambda(filesystem_id, operation):
     except botocore.exceptions.ClientError as error:
         app.log.error(error)
         raise ChaliceViewError(error)
-    else:
-        return response
+    
+    return response
 
 
 def format_filesystem_response(filesystem):
@@ -138,8 +138,8 @@ def describe_manager_stack(filesystem_id):
         }]}
         return stack_status if error.response['Error']['Code'] == 'ValidationError' \
             else ChaliceViewError(error)
-    else:
-        return response
+    
+    return response
 
 
 def delete_manager_stack(filesystem_id):
@@ -159,8 +159,8 @@ def delete_manager_stack(filesystem_id):
     except botocore.exceptions.ClientError as error:
         app.log.error(error)
         raise ChaliceViewError(error)
-    else:
-        return response
+    
+    return response
 
 
 def create_manager_stack(filesystem_id, uid, gid, path, subnet_ids, security_groups):
@@ -219,8 +219,8 @@ def create_manager_stack(filesystem_id, uid, gid, path, subnet_ids, security_gro
     except botocore.exceptions.ClientError as error:
         app.log.error(error)
         raise ChaliceViewError(error)
-    else:
-        return response
+    
+    return response
 
 
 def format_operation_response(result, error_message):
@@ -247,6 +247,33 @@ def format_operation_response(result, error_message):
 
     return response
 
+def check_rule_ports(rule):
+    if rule['IpProtocol'] == '-1' or rule['IpProtocol'] == 'tcp':
+            if rule['FromPort'] and rule['ToPort'] == 2049 or rule['FromPort'] and rule['ToPort'] == -1:
+                return True
+            elif rule['FromPort'] <= 2049 <= rule['ToPort']:
+                return True
+            else:
+                return False
+    
+    return False
+
+def check_ipv4_rule(rule, mount_target_ip):
+    subnet = rule['CidrIpv4']
+    if ipaddress.ip_address(mount_target_ip) in ipaddress.ip_network(subnet):
+        valid_port_access = check_rule_ports(rule)
+        return valid_port_access
+    
+    return False
+
+def check_sg_rule(rule):
+    ref_group_id = rule['ReferencedGroupInfo']['GroupId']
+    if ref_group_id == rule['GroupId']:
+        valid_port_access = check_rule_ports(rule)
+        
+        return valid_port_access
+    
+    return False
 
 def test_nfs_access(group, mount_target_ip):
     rules = EC2.describe_security_group_rules(
@@ -261,36 +288,17 @@ def test_nfs_access(group, mount_target_ip):
     contains_valid_rule = False
 
     for rule in rules['SecurityGroupRules']:
-        # check if rule is inbound
-        if rule['IsEgress'] is False:
-            if 'ReferencedGroupInfo' in rule:
-                # references a sg in the rule
-                ref_group_id = rule['ReferencedGroupInfo']['GroupId']
-                if ref_group_id == rule['GroupId']:
-                    if rule['IpProtocol'] == '-1' or rule['IpProtocol'] == 'tcp':
-                        if rule['FromPort'] and rule['ToPort'] == 2049 or rule['FromPort'] and rule['ToPort'] == -1:
-                            contains_valid_rule = True
-                        elif rule['FromPort'] <= 2049 <= rule['ToPort']:
-                            contains_valid_rule = True
-                        else:
-                            pass
-            elif 'CidrIpv4' in rule:
-                # references an ipv4 subnet
-                subnet = rule['CidrIpv4']
-                if ipaddress.ip_address(mount_target_ip) in ipaddress.ip_network(subnet):
-                    if rule['IpProtocol'] == '-1' or rule['IpProtocol'] == 'tcp':
-                        if rule['FromPort'] and rule['ToPort'] == 2049 or rule['FromPort'] and rule['ToPort'] == -1:
-                            contains_valid_rule = True
-                        elif rule['FromPort'] <= 2049 <= rule['ToPort']:
-                            contains_valid_rule = True
-                        else:
-                            pass
-            else:
-                # bad request
-                pass
+        if contains_valid_rule:
+            break
         else:
-            # outbound rule
-            pass
+            # check if rule is inbound
+            if rule['IsEgress'] is False:
+                if 'ReferencedGroupInfo' in rule:
+                    # references a sg in the rule
+                    contains_valid_rule = check_sg_rule(rule)
+                if 'CidrIpv4' in rule:
+                    # references an ipv4 subnet
+                    contains_valid_rule = check_ipv4_rule(rule, mount_target_ip)
 
     return contains_valid_rule
 
@@ -328,23 +336,23 @@ def list_filesystems():
     except botocore.exceptions.ClientError as error:
         app.log.error(error)
         raise ChaliceViewError(DEFAULT_ERROR_MESSAGE)
-    else:
-        filesystems = response['FileSystems']
-        formatted_filesystems = []
-        for filesystem in filesystems:
-            try:
-                formatted = format_filesystem_response(filesystem)
-            except botocore.exceptions.ClientError as error:
-                app.log.error(error)
-                raise ChaliceViewError(DEFAULT_ERROR_MESSAGE)
-            else:
-                formatted_filesystems.append(formatted)
-        if 'NextMarker' in response:
-            pagination_token = response['NextMarker']
-            return {"filesystems": formatted_filesystems, "paginationToken": pagination_token}
+
+    filesystems = response['FileSystems']
+    formatted_filesystems = []
+    for filesystem in filesystems:
+        try:
+            formatted = format_filesystem_response(filesystem)
+        except botocore.exceptions.ClientError as error:
+            app.log.error(error)
+            raise ChaliceViewError(DEFAULT_ERROR_MESSAGE)
+
+        formatted_filesystems.append(formatted)
     
-        else:
-            return {"filesystems": formatted_filesystems}
+    if 'NextMarker' in response:
+        pagination_token = response['NextMarker']
+        return {"filesystems": formatted_filesystems, "paginationToken": pagination_token}
+
+    return {"filesystems": formatted_filesystems}
 
 
 @app.route('/filesystems/{filesystem_id}', methods=['GET'], cors=True, authorizer=AUTHORIZER)
@@ -363,8 +371,8 @@ def describe_filesystem(filesystem_id):
     except botocore.exceptions.ClientError as error:
         app.log.error(error)
         raise ChaliceViewError(DEFAULT_ERROR_MESSAGE)
-    else:
-        return json.dumps(response, indent=4, sort_keys=True, default=str)
+
+    return json.dumps(response, indent=4, sort_keys=True, default=str)
 
 
 @app.route('/filesystems/{filesystem_id}/netinfo', methods=['GET'], cors=True, \
@@ -385,41 +393,38 @@ def get_netinfo_for_filesystem(filesystem_id):
     except botocore.exceptions.ClientError as error:
         app.log.debug(error)
         raise ChaliceViewError
-    else:
-        mount_targets = response['MountTargets']
-        app.log.debug(mount_targets)
-        for target in mount_targets:
-            mount_target_id = target['MountTargetId']
-            mount_target_ip = target['IpAddress']
+    mount_targets = response['MountTargets']
+    app.log.debug(mount_targets)
+    for target in mount_targets:
+        mount_target_id = target['MountTargetId']
+        mount_target_ip = target['IpAddress']
 
-            try:
-                response = EFS.describe_mount_target_security_groups(
-                    MountTargetId=mount_target_id
-                )
-            except botocore.exceptions.ClientError as error:
-                app.log.debug(error)
-                raise ChaliceViewError
-            else:
-                security_groups = response['SecurityGroups']
-                
-                # test security groups to see if the mount target can be used
-                valid_security_groups = []
-                for group in security_groups:
-                    is_valid_group = test_nfs_access(group, mount_target_ip)
-                    if is_valid_group:
-                        valid_security_groups.append(group)
-                    else:
-                        pass
-                
-                mount_target_item = {'{id}'.format(id=mount_target_id): {'security_groups': \
-                    valid_security_groups, 'subnet_id': target['SubnetId']}}
-                
-                mount_target_info.append(mount_target_item)
+        try:
+            response = EFS.describe_mount_target_security_groups(
+                MountTargetId=mount_target_id
+            )
+        except botocore.exceptions.ClientError as error:
+            app.log.debug(error)
+            raise ChaliceViewError
+        
+        security_groups = response['SecurityGroups']
+        
+        # test security groups to see if the mount target can be used
+        valid_security_groups = []
+        for group in security_groups:
+            is_valid_group = test_nfs_access(group, mount_target_ip)
+            if is_valid_group:
+                valid_security_groups.append(group)
+        
+        mount_target_item = {'{id}'.format(id=mount_target_id): {'security_groups': \
+            valid_security_groups, 'subnet_id': target['SubnetId']}}
+        
+        mount_target_info.append(mount_target_item)
     
     if len(mount_target_info) == 0:
         raise BadRequestError('No mount target available with required network configuration. See the deployment guide for configuration details.')
-    else:
-        return mount_target_info
+
+    return mount_target_info
 
 
 @app.route('/filesystems/{filesystem_id}/lambda', methods=['POST'], cors=True, \
@@ -452,8 +457,8 @@ def create_filesystem_lambda(filesystem_id):
         app.log.error(error)
         app.log.debug('Failed to create stack, deleting it.')
         raise ChaliceViewError('Check API Logs')
-    else:
-        return response
+
+    return response
 
 
 @app.route('/filesystems/{filesystem_id}/lambda', methods=['DELETE'], cors=True, \
@@ -530,25 +535,25 @@ def download(filesystem_id):
     except KeyError as error:
         app.log.error('Missing required query param: {e}'.format(e=error))
         raise BadRequestError('Missing required query param: {e}'.format(e=error))
-    else:
-        try:
-            chunk_index = query_params['dzchunkindex']
-            chunk_offset = query_params['dzchunkbyteoffset']
-        except KeyError:
-            filemanager_event = {"operation": "download", "path": path, "filename": filename}
-            operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
-            payload_encoded = operation_result['Payload']
-            payload = json.loads(payload_encoded.read().decode("utf-8"))
-            return payload
-        else:
-            filemanager_event = {"operation": "download", "path": path, "filename": filename, \
-                                 "chunk_data": {"dzchunkindex": int(chunk_index), \
-                                     "dzchunkbyteoffset": int(chunk_offset)}}
-            operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
-            payload_encoded = operation_result['Payload']
-            payload = json.loads(payload_encoded.read().decode("utf-8"))
-            
-            return payload
+
+    try:
+        chunk_index = query_params['dzchunkindex']
+        chunk_offset = query_params['dzchunkbyteoffset']
+    except KeyError:
+        filemanager_event = {"operation": "download", "path": path, "filename": filename}
+        operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
+        payload_encoded = operation_result['Payload']
+        payload = json.loads(payload_encoded.read().decode("utf-8"))
+        return payload
+
+    filemanager_event = {"operation": "download", "path": path, "filename": filename, \
+                            "chunk_data": {"dzchunkindex": int(chunk_index), \
+                                "dzchunkbyteoffset": int(chunk_offset)}}
+    operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
+    payload_encoded = operation_result['Payload']
+    payload = json.loads(payload_encoded.read().decode("utf-8"))
+    
+    return payload
 
 
 @app.route('/objects/{filesystem_id}/dir', methods=['POST'], cors=True, authorizer=AUTHORIZER)
@@ -571,12 +576,12 @@ def make_dir(filesystem_id):
     except KeyError as error:
         app.log.error('Missing required param: {e}'.format(e=error))
         raise BadRequestError('Missing required param: {e}'.format(e=error))
-    else:
-        filemanager_event = {"operation": "make_dir", "path": path, "name": name}
-        operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
-        error_message = "Error creating dir"
+        
+    filemanager_event = {"operation": "make_dir", "path": path, "name": name}
+    operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
+    error_message = "Error creating dir"
 
-        return format_operation_response(operation_result, error_message)
+    return format_operation_response(operation_result, error_message)
 
 
 @app.route('/objects/{filesystem_id}', methods=['DELETE'], cors=True, authorizer=AUTHORIZER)
@@ -596,12 +601,12 @@ def delete_object(filesystem_id):
     except KeyError as error:
         app.log.error('Missing required query param: {e}'.format(e=error))
         raise BadRequestError('Missing required query param: {e}'.format(e=error))
-    else:
-        filemanager_event = {"operation": "delete", "path": path, "name": name}
-        operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
-        error_message = "Error deleting file"
+    
+    filemanager_event = {"operation": "delete", "path": path, "name": name}
+    operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
+    error_message = "Error deleting file"
 
-        return format_operation_response(operation_result, error_message)
+    return format_operation_response(operation_result, error_message)
 
 
 @app.route('/objects/{filesystem_id}', methods=['GET'], cors=True, authorizer=AUTHORIZER)
@@ -619,9 +624,9 @@ def list_objects(filesystem_id):
     except KeyError as error:
         app.log.error('Missing required query param: {e}'.format(e=error))
         raise BadRequestError('Missing required query param: {e}'.format(e=error))
-    else:
-        filemanager_event = {"operation": "list", "path": path}
-        operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
-        error_message = "Error listing files"
 
-        return format_operation_response(operation_result, error_message)
+    filemanager_event = {"operation": "list", "path": path}
+    operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
+    error_message = "Error listing files"
+
+    return format_operation_response(operation_result, error_message)
