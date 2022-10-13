@@ -32,70 +32,23 @@ Mappings:
       WebsitePrefix: "simple-file-manager-for-amazon-efs/%%VERSION%%/website"
 
 Resources:
-  WebsiteBucketNameFunction:
-    Type: AWS::Lambda::Function
+  EFSFileSimpleLoggingBucket:
+    Type: 'AWS::S3::Bucket'
     Metadata:
-        cfn_nag:
-          rules_to_suppress:
-            - id: W89
-              reason: "Custom resource deployed in default VPC"
-            - id: W92
-              reason: "ReservedConcurrentExecutions not needed since this function runs once when CloudFormation deploys"
+      cfn_nag:
+        rules_to_suppress:
+          - id: W35
+            reason: "Logs bucket does not require logging configuration"
+          - id: W51
+            reason: "Logs bucket is private and does not require a bucket policy"
     Properties:
-      Code:
-        ZipFile: |
-          import string
-          import random
-          import cfnresponse
-          def handler(event, context):
-              stack_name = event['StackId'].split('/')[1].split('-Uuid')[0]
-              response_data = {'Data': stack_name.lower() + '-website'}
-              cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data, "CustomResourcePhysicalID")
-      Handler: index.handler
-      Runtime: python3.8
-      Role: !GetAtt WebsiteBucketNameExecutionRole.Arn
-  WebsiteBucketNameFunctionPermissions:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: 'lambda:InvokeFunction'
-      FunctionName: !GetAtt WebsiteBucketNameFunction.Arn
-      Principal: 'cloudformation.amazonaws.com'
-  WebsiteBucketNameExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      Path: /
-      Policies:
-        - PolicyName: root
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource: 
-                  !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*
-  GetWebsiteBucketName:
-    Type: Custom::CustomResource
-    Properties:
-      ServiceToken: !GetAtt WebsiteBucketNameFunction.Arn
+      AccessControl: LogDeliveryWrite
 
   EFSFileSimpleWebsiteBucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
     Properties:
       AccessControl: LogDeliveryWrite
-      BucketName: !GetAtt GetWebsiteBucketName.Data
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -104,7 +57,7 @@ Resources:
         IndexDocument: "index.html"
         ErrorDocument: "index.html"
       LoggingConfiguration:
-        DestinationBucketName: !GetAtt GetWebsiteBucketName.Data
+        DestinationBucketName: !Ref EFSFileSimpleLoggingBucket
         LogFilePrefix: "access_logs/"
       LifecycleConfiguration:
         Rules:
@@ -181,7 +134,7 @@ Resources:
       DistributionConfig:
         Comment: "Website distribution for Simple File Manager for EFS Solution"
         Logging:
-          Bucket: !Sub "${EFSFileSimpleWebsiteBucket}.s3.amazonaws.com"
+          Bucket: !Sub "${EFSFileSimpleLoggingBucket}.s3.amazonaws.com"
           Prefix: cf_logs/
           IncludeCookies: true
         Origins:
