@@ -46,6 +46,40 @@ def test_list_filesystems(test_client, efs_client_stub, cfn_client_stub):
     print('PASS')
 
 
+def test_list_filesystems_paginated(test_client, efs_client_stub, cfn_client_stub):
+    print('GET /filesystems')
+
+    efs_client_stub.add_response(
+        'describe_file_systems',
+        expected_params={'MaxItems': 10, 'Marker': 'xyz'},
+        service_response=EFS['describe_file_systems_marker']
+    )
+
+    cfn_client_stub.add_response(
+        'describe_stacks',
+        expected_params={'StackName': f'testStackPrefix-ManagedResources-{test_filesystem_id}'},
+        service_response=CFN['describe_stacks']
+    )
+    response = test_client.http.get('/filesystems?cursor=xyz')
+
+    formatted_response = json.loads(response.body)
+    
+    print(formatted_response)
+
+    expected_response_keys = ['filesystems']
+
+    assert all(item in formatted_response.keys() for item in expected_response_keys)
+    
+    filesystems = formatted_response['filesystems']
+
+    assert isinstance(filesystems, list)
+    assert filesystems[0]['name'] == 'MyFileSystem'
+    assert filesystems[0]['managed'] is True
+    assert filesystems[0]['file_system_id'] == f'{test_filesystem_id}'
+
+    print('PASS')
+
+
 def test_get_netinfo_for_filesystem(test_client, efs_client_stub, ec2_client_stub):
     print(f'GET /filesystems/{test_filesystem_id}/netinfo')
 

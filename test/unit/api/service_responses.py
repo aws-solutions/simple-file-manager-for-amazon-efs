@@ -100,6 +100,34 @@ efs_describe_file_systems_no_marker_response = {
     },
 }
 
+
+efs_describe_file_systems_marker_response = {
+    'FileSystems': [
+        {
+            'CreationTime': datetime.now(),
+            'CreationToken': 'tokenstring',
+            'FileSystemId': f'{test_filesystem_id}',
+            'LifeCycleState': 'available',
+            'Name': 'MyFileSystem',
+            'NumberOfMountTargets': 1,
+            'OwnerId': '012345678912',
+            'PerformanceMode': 'generalPurpose',
+            'SizeInBytes': {
+                'Value': 6144,
+            },
+            'Tags': [
+                {
+                    'Key': 'Name',
+                    'Value': 'MyFileSystem',
+                },
+            ],
+        },
+    ],
+    'ResponseMetadata': {
+        '...': '...',
+    },
+}
+
 efs_describe_mount_targets_response = {
     'MountTargets': [
         {
@@ -237,7 +265,7 @@ lambda_invoke_download_response = {
 
 
 
-EFS = {'describe_file_systems_no_marker': efs_describe_file_systems_no_marker_response, 'describe_mount_targets': efs_describe_mount_targets_response, 'describe_mount_target_security_groups': efs_describe_mount_target_security_groups_response}
+EFS = {'describe_file_systems_no_marker': efs_describe_file_systems_no_marker_response, 'describe_file_systems_marker': efs_describe_file_systems_marker_response, 'describe_mount_targets': efs_describe_mount_targets_response, 'describe_mount_target_security_groups': efs_describe_mount_target_security_groups_response}
 CFN = {'describe_stacks': cfn_describe_stacks_response, 'create_stack': cfn_create_stack_response}
 LAMBDA = {'upload': lambda_invoke_upload_response, 'delete': lambda_invoke_delete_response, 'list': lambda_invoke_list_response, 'make_dir': lambda_invoke_make_dir_response, 'download': lambda_invoke_download_response}
 EC2 = {'describe_sec_rules': ec2_describe_security_group_rules_response}
