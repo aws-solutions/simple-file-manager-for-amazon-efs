@@ -317,11 +317,12 @@ def list_filesystems():
     query_params = app.current_request.query_params
 
     cursor = None
-    
-    try:
-        cursor = query_params['cursor']
-    except KeyError:
-        pass
+
+    if query_params is not None:
+        try:
+            cursor = query_params['cursor']
+        except KeyError:
+            pass
     
     try:
         if cursor:
