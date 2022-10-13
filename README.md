@@ -9,15 +9,13 @@ You can deploy the open source solution by clicking one of the one-click deploym
 
 # Install
 
-Region| Launch
-------|-----
-US East (N. Virginia) | [![Launch in us-east-1](docs/assets/images/launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?stackName=sfm&templateURL=https://rodeolabz-us-east-1.s3.us-east-1.amazonaws.com/simple-file-manager-for-amazon-efs/v1.4.0/simple-file-manager-for-amazon-efs.template)
-US West (Oregon) | [![Launch in us-west-2](docs/assets/images/launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/new?stackName=sfm&templateURL=https://rodeolabz-us-west-2.s3.us-west-2.amazonaws.com/simple-file-manager-for-amazon-efs/v1.4.0/simple-file-manager-for-amazon-efs.template)
+Install the solution by visiting the AWS Solutions library and selecting *Launch in the AWS Console*:
 
+https://aws.amazon.com/solutions/implementations/simple-file-manager-for-amazon-efs/
 
 # Getting Started
 
-1. Launch the solution by clicking a one click link for the desired region.
+1. Launch the solution by following the steps in the [Install](#Install) section.
     * *Make sure to review the [installation parameters](#installation-parameters) section.*
 2. Follow the stack creation prompts in CloudFormation.
 3. When the deployment is completed, you will find the URL to the application in the "Outputs" tab of the stack.
@@ -77,9 +75,10 @@ ___
 * Clone the repository, then make the desired code changes
 * Next, run unit tests to make sure added customization passes the tests
 ```
-cd ./deployment
-chmod +x ./run-unit-tests.sh  
-./run-unit-tests.sh 
+cd test/unit
+chmod +x ./run_unit.sh  
+./run_unit.sh api
+./run_unit.sh manager
 ```
 
 * Configure the bucket name of your target Amazon S3 distribution bucket
