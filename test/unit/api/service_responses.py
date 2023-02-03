@@ -82,7 +82,7 @@ efs_describe_file_systems_no_marker_response = {
             'LifeCycleState': 'available',
             'Name': 'MyFileSystem',
             'NumberOfMountTargets': 1,
-            'OwnerId': '012345678912',
+            'OwnerId': '123456789012',
             'PerformanceMode': 'generalPurpose',
             'SizeInBytes': {
                 'Value': 6144,
@@ -110,7 +110,7 @@ efs_describe_file_systems_marker_response = {
             'LifeCycleState': 'available',
             'Name': 'MyFileSystem',
             'NumberOfMountTargets': 1,
-            'OwnerId': '012345678912',
+            'OwnerId': '123456789012',
             'PerformanceMode': 'generalPurpose',
             'SizeInBytes': {
                 'Value': 6144,
@@ -136,7 +136,7 @@ efs_describe_mount_targets_response = {
             'LifeCycleState': 'available',
             'MountTargetId': 'fsmt-12340abc',
             'NetworkInterfaceId': 'eni-cedf6789',
-            'OwnerId': '012345678912',
+            'OwnerId': '123456789012',
             'SubnetId': 'subnet-1234abcd',
         },
     ],

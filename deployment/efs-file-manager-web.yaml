@@ -43,6 +43,8 @@ Resources:
             reason: "Logs bucket is private and does not require a bucket policy"
     Properties:
       AccessControl: LogDeliveryWrite
+      VersioningConfiguration: 
+        Status: Enabled
 
   EFSFileSimpleWebsiteBucket:
     Type: AWS::S3::Bucket
