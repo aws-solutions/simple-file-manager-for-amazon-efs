@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2022-10-17
+- Paginated response for list filesystems that allows greater than 10 EFS filesystems to be displayed
+- AppRegistry Integration
+- Buildspec upgrades
+- Unit tests to 80% overall coverage
+- Code refactoring to reduce cognitive complexity
+- File manager lambda creation now checks for valid security group rules
+- Misc documentation
 
 ## [1.4.1] - 2022-08-24
 - Python version bump to handle 3.6 EOL
@@ -15,14 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Misc documentation
 
 ## [1.3.0] - 2021-06-01
-## New:
+### New:
 - Add delete functionality for SFM created resources #115 
 
-## Security:
+### Security:
 - IAM permissions scoped down  #114
 
-## Documentation:
-Diagrams from previous update
+### Documentation:
+- Diagrams from previous update
 - Detailed architecture diagram #1
 - Simplified architecture diagram #1
 - Security sequence diagram #1
@@ -48,7 +56,7 @@ Diagrams from previous update
 - FS lambda fails to launch due to SG constraint #75 
 
 ### Documentation:
-Diagrams from previous update
+- Diagrams from previous update
 - Detailed architecture diagram #1
 - Simplified architecture diagram #1
 - Security sequence diagram #1

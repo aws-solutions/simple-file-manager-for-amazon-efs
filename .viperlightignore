@@ -12,3 +12,4 @@ deployment/simple-file-manager-for-amazon-efs.yaml:74
 deployment/simple-file-manager-for-amazon-efs.yaml:59
 deployment/simple-file-manager-for-amazon-efs.yaml:84
 deployment/simple-file-manager-for-amazon-efs.yaml:69
+test/
