@@ -19,7 +19,6 @@
 # misc
 **/npm-debug.log
 **/testem.log
-**/package-lock.json
 **/.vscode/settings.json
 **/__pycache__
 # System Files

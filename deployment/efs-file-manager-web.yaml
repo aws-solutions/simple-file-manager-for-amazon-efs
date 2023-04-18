@@ -43,12 +43,20 @@ Resources:
             reason: "Logs bucket is private and does not require a bucket policy"
     Properties:
       AccessControl: LogDeliveryWrite
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: ObjectWriter
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration: 
+        Status: Enabled
 
   EFSFileSimpleWebsiteBucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
     Properties:
-      AccessControl: LogDeliveryWrite
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:

@@ -83,6 +83,7 @@ parse_params() {
   # default values of variables set from params
   flag=0
   param=''
+  use_solution_builder_pipeline=false
 
   while :; do
     case "${1-}" in
@@ -102,6 +103,10 @@ parse_params() {
       ;;
     --region)
       region="${2}"
+      shift
+      ;;
+    --use_solution_builder_pipeline)
+      use_solution_builder_pipeline=true
       shift
       ;;
     -?*) die "Unknown option: $1" ;;
@@ -127,6 +132,7 @@ msg "- Template bucket: ${global_bucket}"
 msg "- Code bucket: ${regional_bucket}-${region}"
 msg "- Version: ${version}"
 msg "- Region: ${region}"
+msg "- Use Solution Builder Pipeline: ${use_solution_builder_pipeline}"
 
 
 echo ""
@@ -348,9 +354,9 @@ echo "Cleaning up website helper function"
 rm -rf ./dist
 
 
-# Skip copy dist to S3 if building for solution builder because
+# Skip copy dist to S3 if building for solution builder or nightswatch because
 # that pipeline takes care of copying the dist in another script.
-if [ "$global_bucket" != "solutions-features-reference" ] && [ "$global_bucket" != "solutions-reference" ] && [ "$global_bucket" != "solutions-test-reference" ]; then
+if [ $use_solution_builder_pipeline = false ]; then
     
     echo "------------------------------------------------------------------------------"
     echo "Validate user is valid owner of S3 bucket"
