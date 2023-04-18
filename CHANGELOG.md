@@ -4,22 +4,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] - 2023-04-13
+### Security:
+- Enable versioning/encryption on logging bucket 
+
+### Bug Fixes:
+- Enable Amazon S3 ACLs on logging bucket
+- Include package-lock.json to prevent incompatibilities with future package versions
+
 ## [1.5.0] - 2022-10-17
+### New:
 - Paginated response for list filesystems that allows greater than 10 EFS filesystems to be displayed
 - AppRegistry Integration
+- File manager lambda creation now checks for valid security group rules
+
+### Changes:
+- Code refactoring to reduce cognitive complexity
 - Buildspec upgrades
 - Unit tests to 80% overall coverage
-- Code refactoring to reduce cognitive complexity
-- File manager lambda creation now checks for valid security group rules
+
+### Documentation:
 - Misc documentation
 
 ## [1.4.1] - 2022-08-24
+### Changes:
 - Python version bump to handle 3.6 EOL
 
 ## [1.4.0] - 2021-07-08
-- General bug fixes 
+### Changes:
 - Code refactoring to support pylint
 - cfn-lint / bandit code cleanup
+
+### Bug Fixes:
+- General bug fixes 
+
+### Documentation:
 - Misc documentation
 
 ## [1.3.0] - 2021-06-01
