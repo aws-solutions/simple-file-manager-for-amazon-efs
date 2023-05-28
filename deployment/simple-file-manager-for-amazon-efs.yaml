@@ -175,6 +175,7 @@ Resources:
                   - "elasticfilesystem:CreateAccessPoint"
                   - "elasticfilesystem:DescribeAccessPoints"
                   - "elasticfilesystem:DescribeMountTargetSecurityGroups"
+                  - "elasticfilesystem:TagResource"
                 Resource:
                   - "arn:aws:elasticfilesystem:*:*:file-system/*"
                   - "arn:aws:elasticfilesystem:*:*:access-point/*"
