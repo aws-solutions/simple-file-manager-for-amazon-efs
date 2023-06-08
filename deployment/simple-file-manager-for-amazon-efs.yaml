@@ -181,6 +181,15 @@ Resources:
                   - "arn:aws:elasticfilesystem:*:*:*"
               - Effect: Allow
                 Action:
+                  - "elasticfilesystem:TagResource"
+                Resource:
+                  - "arn:aws:elasticfilesystem:*:*:access-point/*"
+                  - "arn:aws:elasticfilesystem:*:*:file-system/*"
+                Condition:
+                  StringEquals:
+                    elasticfilesystem:CreateAction: CreateAccessPoint
+              - Effect: Allow
+                Action:
                   - "iam:PassRole"
                 Resource:
                   - "arn:aws:iam::*:role/fs-*-manager-role"

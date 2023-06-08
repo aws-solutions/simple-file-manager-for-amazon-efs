@@ -18,6 +18,7 @@ Selenium under the Apache License Version 2.0
 Boto3 under the Apache License Version 2.0
 Pyyaml under the MIT License (MIT)
 Requests_toolbelt under the Apache License Version 2.0
+Urllib3 under the the MIT License (MIT)
 Aws-amplify under the Apache License Version 2.0
 Aws-amplify-vue under the Apache License Version 2.0
 Bootstrap under the MIT License (MIT)

@@ -63,6 +63,14 @@ elif [ "$1" = "manager" ]; then
     else
 	    exit 1
     fi
+elif [ "$1" = "all" ]; then
+    echo "Running all unit tests"
+    pytest ./ -s -W ignore::DeprecationWarning -W ignore::UserWarning -p no:cacheprovider --cov=../../ --cov-report xml
+    if [ $? -eq 0 ]; then
+	    exit 0
+    else
+	    exit 1
+    fi
 else
     echo "Invalid positional parameter. Quitting."
     exit 1
