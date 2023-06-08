@@ -50,5 +50,11 @@
     "> 1%",
     "last 2 versions",
     "not dead"
-  ]
+  ],
+  "overrides": {
+    "fast-xml-parser": "4.2.4"
+  },
+  "resolutions": {
+    "fast-xml-parser": "4.2.4"
+ } 
 }

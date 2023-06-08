@@ -35,6 +35,8 @@ MANAGER_STACK_PREFIX = '{prefix}-ManagedResources-'.format(prefix=STACK_PREFIX)
 
 DEFAULT_ERROR_MESSAGE = 'Check API logs for more information'
 
+DEFAULT_MISSING_PARAMS_ERROR_MESSAGE = 'Missing required query param: {e}'
+
 # Cognito resources
 # From cloudformation stack
 
@@ -500,8 +502,8 @@ def upload(filesystem_id):
         path = app.current_request.query_params['path']
         filename = app.current_request.query_params['filename']
     except KeyError as error:
-        app.log.error('Missing required query param: {e}'.format(e=error))
-        raise BadRequestError('Missing required query param: {e}'.format(e=error))
+        app.log.error(DEFAULT_MISSING_PARAMS_ERROR_MESSAGE.format(e=error))
+        raise BadRequestError(DEFAULT_MISSING_PARAMS_ERROR_MESSAGE.format(e=error))
 
     request = app.current_request
     chunk_data = request.json_body
@@ -534,8 +536,8 @@ def download(filesystem_id):
         path = query_params['path']
         filename = query_params['filename']
     except KeyError as error:
-        app.log.error('Missing required query param: {e}'.format(e=error))
-        raise BadRequestError('Missing required query param: {e}'.format(e=error))
+        app.log.error(DEFAULT_MISSING_PARAMS_ERROR_MESSAGE.format(e=error))
+        raise BadRequestError(DEFAULT_MISSING_PARAMS_ERROR_MESSAGE.format(e=error))
 
     try:
         chunk_index = query_params['dzchunkindex']
@@ -600,8 +602,8 @@ def delete_object(filesystem_id):
         name = app.current_request.query_params['name']
         path = app.current_request.query_params['path']
     except KeyError as error:
-        app.log.error('Missing required query param: {e}'.format(e=error))
-        raise BadRequestError('Missing required query param: {e}'.format(e=error))
+        app.log.error(DEFAULT_MISSING_PARAMS_ERROR_MESSAGE.format(e=error))
+        raise BadRequestError(DEFAULT_MISSING_PARAMS_ERROR_MESSAGE.format(e=error))
     
     filemanager_event = {"operation": "delete", "path": path, "name": name}
     operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)
@@ -623,8 +625,8 @@ def list_objects(filesystem_id):
     try:
         path = app.current_request.query_params['path']
     except KeyError as error:
-        app.log.error('Missing required query param: {e}'.format(e=error))
-        raise BadRequestError('Missing required query param: {e}'.format(e=error))
+        app.log.error(DEFAULT_MISSING_PARAMS_ERROR_MESSAGE.format(e=error))
+        raise BadRequestError(DEFAULT_MISSING_PARAMS_ERROR_MESSAGE.format(e=error))
 
     filemanager_event = {"operation": "list", "path": path}
     operation_result = proxy_operation_to_efs_lambda(filesystem_id, filemanager_event)

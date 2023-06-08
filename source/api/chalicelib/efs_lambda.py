@@ -24,10 +24,10 @@ def delete(event):
     path = event['path']
     name = event['name']
 
-    file = path + '/' + name
+    file_path = path + '/' + name
 
     try:
-        os.remove(file)
+        os.remove(file_path)
     except OSError:
         return {"message": "couldn't delete the file", "statusCode": 500}
     else:
@@ -151,7 +151,7 @@ def list(event):
         return {"path": path, "directiories": dir_items, "files": file_items, "statusCode": 200}
 
 
-def lambda_handler(event, context):
+def lambda_handler(event, _context):
     # get operation type
     try:
         operation_type = event['operation']
