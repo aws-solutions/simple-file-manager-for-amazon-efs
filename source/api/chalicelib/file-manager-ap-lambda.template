@@ -248,7 +248,7 @@ Resources:
       MemorySize: 512
       PackageType: "Zip"
       Role: !GetAtt ManagedAccessPointFunctionRole.Arn
-      Runtime: "python3.9"
+      Runtime: "python3.11"
       Timeout: 60
       VpcConfig:
         SecurityGroupIds:

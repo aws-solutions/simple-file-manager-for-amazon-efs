@@ -50,27 +50,12 @@ if [ "$1" = "" ]; then
 elif [ "$1" = "api" ]; then
     echo "Running api unit tests"
     pytest api/ -s -W ignore::DeprecationWarning -W ignore::UserWarning -p no:cacheprovider --cov=../../source/api/ --cov-report xml --cov-append api
-    if [ $? -eq 0 ]; then
-	    exit 0
-    else
-	    exit 1
-    fi
 elif [ "$1" = "manager" ]; then
     echo "Running file manager lambda unit tests"
     pytest manager/ -s -W ignore::DeprecationWarning -p no:cacheprovider --cov=../../source/api/chalicelib/ --cov-report xml --cov-append manager
-    if [ $? -eq 0 ]; then
-	    exit 0
-    else
-	    exit 1
-    fi
 elif [ "$1" = "all" ]; then
     echo "Running all unit tests"
     pytest ./ -s -W ignore::DeprecationWarning -W ignore::UserWarning -p no:cacheprovider --cov=../../ --cov-report xml
-    if [ $? -eq 0 ]; then
-	    exit 0
-    else
-	    exit 1
-    fi
 else
     echo "Invalid positional parameter. Quitting."
     exit 1

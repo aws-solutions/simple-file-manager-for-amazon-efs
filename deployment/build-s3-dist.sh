@@ -274,6 +274,7 @@ chalice --debug package --merge-template external_resources.json dist
 echo "...chalice done"
 echo "cp ./dist/sam.json $global_dist_dir/file-manager-api-stack.template"
 cp dist/sam.json "$global_dist_dir"/file-manager-api-stack.template
+sed -i.orig -e "$new_version" "$global_dist_dir/file-manager-api-stack.template"
 if [ $? -ne 0 ]; then
   echo "ERROR: Failed to build api template"
   exit 1

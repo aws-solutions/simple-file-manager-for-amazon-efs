@@ -1,6 +1,8 @@
 {
   "name": "web",
   "version": "0.1.0",
+  "license": "Apache-2.0",
+  "description": "Simple File Manager for Amazon EFS Frontend",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
@@ -52,9 +54,9 @@
     "not dead"
   ],
   "overrides": {
-    "fast-xml-parser": "4.2.4"
+    "fast-xml-parser": "4.2.5"
   },
   "resolutions": {
-    "fast-xml-parser": "4.2.4"
+    "fast-xml-parser": "4.2.5"
  } 
 }

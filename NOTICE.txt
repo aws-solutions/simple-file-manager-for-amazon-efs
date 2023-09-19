@@ -13,19 +13,50 @@ THIRD PARTY COMPONENTS
 This software includes third party software subject to the following copyrights:
 
 AWS SDK under the Apache License Version 2.0
-Pytest under the MIT License (MIT)
-Selenium under the Apache License Version 2.0
-Boto3 under the Apache License Version 2.0
 Pyyaml under the MIT License (MIT)
-Requests_toolbelt under the Apache License Version 2.0
 Urllib3 under the the MIT License (MIT)
-Aws-amplify under the Apache License Version 2.0
-Aws-amplify-vue under the Apache License Version 2.0
-Bootstrap under the MIT License (MIT)
-Bootstrap-vue under the MIT License (MIT)
-Core-js under the MIT License (MIT)
 Vue under the MIT License (MIT)
 vue-router under the MIT License (MIT)
 vue-stepper-component under the MIT License (MIT)
 vue2-dropzone under the MIT License (MIT)
 webpack under the MIT License (MIT)
+PySocks under the BSD-3-Clause License
+attrs under the MIT License (MIT)
+blessed under the MIT License (MIT)
+boolean.py under the BSD-2-Clause license
+boto3 under the Apache License Version 2.0
+botocore under the Apache License Version 2.0
+chalice under the Apache License Version 2.0
+click under the BSD-3-Clause license
+coverage under the Apache License Version 2.0
+exceptiongroup under the MIT License (MIT)
+h11 under the MIT License (MIT)
+iniconfig under the MIT License (MIT)
+inquirer under the MIT License (MIT)
+jmespath under the MIT License (MIT)
+license-expression under the Apache License Version 2.0
+outcome under the Apache License Version 2.0
+pluggy under the MIT License (MIT)
+pytest under the MIT License (MIT)
+pytest-cov under the MIT License (MIT)
+pytest-mock under the MIT License (MIT)
+python-dateutil under the Apache Software License
+python-editor under the Apache Software License
+readchar under the MIT License (MIT)
+requests-toolbelt under the Apache License Version 2.0
+s3transfer under the Apache License Version 2.0
+selenium under the Apache License Version 2.0
+sniffio under the Apache License Version 2.0
+tomli under the MIT License (MIT)
+trio under the Apache License Version 2.0
+trio-websocket under the MIT License (MIT)
+typing_extensions under the Python Software Foundation License
+wsproto under the MIT License (MIT)
+@aws-amplify/api under the Apache License Version 2.0
+@aws-amplify/core under the Apache License Version 2.0
+aws-amplify under the Apache License Version 2.0
+aws-amplify-vue under the Apache License Version 2.0
+aws-sdk under the Apache License Version 2.0
+bootstrap under the MIT License (MIT)
+bootstrap-vue under the MIT License (MIT)
+core-js under the MIT License (MIT)

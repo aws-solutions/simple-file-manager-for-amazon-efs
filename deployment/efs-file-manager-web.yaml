@@ -11,7 +11,7 @@
 # express or implied. See the License for the specific language governing
 # permissions and limitations under the License.
 AWSTemplateFormatVersion: "2010-09-09"
-Description: (SO0145) Simple File Manager for Amazon EFS Solution Web %%VERSION%% 
+Description: (SO0145) Simple File Manager for Amazon EFS Solution Web %%VERSION%%
 
 Parameters:
   FileManagerAPIEndpoint:
@@ -34,6 +34,7 @@ Mappings:
 Resources:
   EFSFileSimpleLoggingBucket:
     Type: 'AWS::S3::Bucket'
+    DeletionPolicy: Retain
     Metadata:
       cfn_nag:
         rules_to_suppress:
@@ -82,20 +83,6 @@ Resources:
             AbortIncompleteMultipartUpload:
               DaysAfterInitiation: 1
 
-  WebBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref EFSFileSimpleWebsiteBucket
-      PolicyDocument:
-        Statement:
-          - Effect: Deny
-            Principal: "*"
-            Action: "*"
-            Resource: !Sub "arn:aws:s3:::${EFSFileSimpleWebsiteBucket}/*"
-            Condition:
-              Bool:
-                aws:SecureTransport: false
-
   CopyWebSource:
     Type: Custom::WebsiteDeployHelper
     Properties:
@@ -130,6 +117,13 @@ Resources:
               - !Sub "arn:aws:s3:::${EFSFileSimpleWebsiteBucket}/*"
             Principal:
               CanonicalUser: !GetAtt EFSFileSimpleOriginAccessIdentity.S3CanonicalUserId
+          - Effect: Deny
+            Principal: "*"
+            Action: "*"
+            Resource: !Sub "arn:aws:s3:::${EFSFileSimpleWebsiteBucket}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: false
 
   EFSFileSimpleWebsiteDistribution:
     Type: AWS::CloudFront::Distribution
@@ -252,7 +246,7 @@ Resources:
       Handler: website_helper.lambda_handler
       MemorySize: 256
       Role: !GetAtt WebsiteHelperRole.Arn
-      Runtime: python3.9
+      Runtime: python3.11
       Timeout: 900
       Environment:
         Variables:
