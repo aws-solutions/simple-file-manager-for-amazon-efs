@@ -1,4 +1,5 @@
 {
+  "Description": "(SO0145) Simple File Manager for Amazon EFS Solution Auth %%VERSION%%",
   "Parameters": {
     "DeploymentPackageBucket": {
       "Type": "String",

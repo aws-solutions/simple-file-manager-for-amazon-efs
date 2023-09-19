@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.3] - 2023-09-20
+### Bug Fixes:
+- Merge Website Bucket policy statements to prevent deployment failures on policy creation slowdowns
+- Remove uneeded exit in Unit test script
+- Added downline dependencies to NOTICE.txt
+
+### Security:
+- Upgrade Node version to 18
+- Upgrade Python runtime to 3.11
+- Update NPM packages to fix vulnerabilities
+
 ## [1.5.2] - 2023-05-19
 ### Bug Fixes:
 - elasticfilesystem:TagResource permission added to Manager Lambda
