@@ -54,9 +54,11 @@
     "not dead"
   ],
   "overrides": {
-    "fast-xml-parser": "4.2.5"
+    "fast-xml-parser": "4.2.5",
+    "postcss": "8.4.31"
   },
   "resolutions": {
-    "fast-xml-parser": "4.2.5"
+    "fast-xml-parser": "4.2.5",
+    "postcss": "8.4.31"
  } 
 }
