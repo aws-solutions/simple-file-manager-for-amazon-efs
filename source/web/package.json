@@ -10,9 +10,9 @@
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
-    "@aws-amplify/api": "^4.0.63",
+    "@aws-amplify/api": "^6.0.26",
     "@aws-amplify/core": "^4.7.15",
-    "aws-amplify": "^4.3.43",
+    "aws-amplify": "^6.0.26",
     "aws-amplify-vue": "2.1.5",
     "aws-sdk": "^2.1354.0",
     "bootstrap": "^4.5.0",
