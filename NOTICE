@@ -60,3 +60,8 @@ aws-sdk under the Apache License Version 2.0
 bootstrap under the MIT License (MIT)
 bootstrap-vue under the MIT License (MIT)
 core-js under the MIT License (MIT)
+awscli under the Apache License Version 2.0
+colorama under the BSD-3-Clause License
+docutils under the BSD License
+pyasn1 under the BSD-2-Clause License
+rsa under the Apache License Version 2.0

@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.6] - 2024-04-09
+### Fixed
+- Updated axios sub-dependency to use v0.28.0 to resolve security vulnerabilities:
+  - [CVE-2023-45857]
+  - [CVE-2024-28849]
+  - [CVE-2023-26159]
+
+- Re-generated package-lock to resolve security vulnerabilities:
+  - [CVE-2024-29180]
+  - [CVE-2023-42282]
+  - [CVE-2024-29041]
+
 ## [1.5.5] - 2023-10-20
 ### Fixed:
 - Updated crypto.js dependency to fix security vulnerabilities [CVE-2023-46233]
