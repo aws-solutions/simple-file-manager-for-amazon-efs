@@ -4,8 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [1.5.7] - 2024-05-30
+### Fixed:
+- Updated API Handler Python runtime to 3.11 due to Python 3.8 Lambda runtime deprecation
+
+### Changes:
+- Updated spoke template descriptions to include suffix
+
 ## [1.5.6] - 2024-04-09
-### Fixed
+### Fixed:
 - Updated axios sub-dependency to use v0.28.0 to resolve security vulnerabilities:
   - [CVE-2023-45857]
   - [CVE-2024-28849]
