@@ -1,5 +1,5 @@
 {
-  "Description": "(SO0145) Simple File Manager for Amazon EFS Solution Auth %%VERSION%%",
+  "Description": "(SO0145-Auth) Simple File Manager for Amazon EFS Solution Auth %%VERSION%%",
   "Parameters": {
     "DeploymentPackageBucket": {
       "Type": "String",
@@ -43,7 +43,7 @@
             }
         },
       "Properties": {
-        "Runtime": "python3.8",
+        "Runtime": "python3.11",
         "Role": {"Ref": "ApiHandlerIamRole"},
         "Environment": {
           "Variables": {
