@@ -13,13 +13,13 @@ deployment/simple-file-manager-for-amazon-efs.yaml:59
 deployment/simple-file-manager-for-amazon-efs.yaml:84
 deployment/simple-file-manager-for-amazon-efs.yaml:69
 test/
+Config
 
 [node-npmoutdated]
 @aws-amplify/api=4.0.64 
 @aws-amplify/core=4.7.15
 aws-amplify=4.3.46
 bootstrap=4.6.2
-vue=2.7.14
 vue-router=3.6.5
 eslint=7.32.0
 eslint-plugin-vue=7.20.0
