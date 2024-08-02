@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.9] - 2024-08-02
+### Security: 
+- Bump `fast-xml-parser` to `4.4.1` to resolve [CVE-2024-41818]
+- Update to Vue 3 compat build and replace `vue-template-compiler` with `@vue/compiler-sfc` to resolve [CVE-2024-6783]
+
+### Removed
+- Unused `vue-stepper-component` and `vue2-dropzone` dependencies
+
 ## [1.5.8] - 2024-06-23
 ### Security:
 - Bump `braces` to `3.0.3` to resolve [CVE-2024-4068]
