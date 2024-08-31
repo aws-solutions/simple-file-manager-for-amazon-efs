@@ -21,7 +21,7 @@
     "vue": "^3.4.34",
     "@vue/compat": "^3.4.34",
     "vue-router": "^3.4.3",
-    "webpack": "^5.75.0"
+    "webpack": "^5.94.0"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "^5.0.8",
