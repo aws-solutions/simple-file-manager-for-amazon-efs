@@ -1,40 +1,32 @@
 <template>
   <div>
-  <b-container fluid='true' class="bv-example-row">
-  <b-row>
-    <b-col>
-      <br>
-      <b-card class="ml-3">
-        <h2>Filesystems</h2>
-        <filesystems/>
-      </b-card>
-    </b-col>
-  </b-row>
-</b-container>
+    <div class="container-fluid bv-example-row">
+      <div class="row">
+        <div class="col">
+          <br />
+          <div class="card ml-3 p-3">
+            <h2>Filesystems</h2>
+            <filesystems />
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
-import filesystems from '../components/filesystems.vue'
+import filesystems from "../components/filesystems.vue";
 
 export default {
-  name: 'Home',
+  name: "Home",
   components: {
-    filesystems
+    filesystems,
   },
-  data () {
-    return {
-    }
-  }
-}
-
-
+  data() {
+    return {};
+  },
+};
 </script>
 
-
-
 <!-- Add "scoped" attribute to limit CSS to this component only -->
-<style scoped>
-
-
-</style>
+<style scoped></style>

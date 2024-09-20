@@ -4,18 +4,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.10] - 2024-09-20
+### Security: 
+- Bump webpack to `5.94.0` to resolve [CVE-2024-43788](https://github.com/advisories/GHSA-4vvj-4cpr-p986)
+- Bump serve-static to `1.16.2` to resolve CVE with send [ CVE-2024-43799](https://github.com/advisories/GHSA-m6fv-jmcg-4jfg)
+- Bump path-to-regexp to `0.1.10` to resolve [CVE-2024-45296](https://github.com/advisories/GHSA-9wv6-86v2-598j)
+- Bump micromatch to `4.0.8` to resolve [CVE-2024-4067](https://github.com/advisories/GHSA-952p-6rrq-rcjv)
+- Remove usage of `bootstrap-vue` (EOL) and migrate `bootstrap v4` (EOL) to `bootstrap v5` to resolve [CVE-2024-6531](https://nvd.nist.gov/vuln/detail/CVE-2024-6531)
+- Adds Security.md file to provide guidance around reporting security vulnerabilities.
+
+
 ## [1.5.9] - 2024-08-02
 ### Security: 
-- Bump `fast-xml-parser` to `4.4.1` to resolve [CVE-2024-41818]
-- Update to Vue 3 compat build and replace `vue-template-compiler` with `@vue/compiler-sfc` to resolve [CVE-2024-6783]
+- Bump `fast-xml-parser` to `4.4.1` to resolve [CVE-2024-41818](https://nvd.nist.gov/vuln/detail/CVE-2024-41818)
+- Update to Vue 3 compat build and replace `vue-template-compiler` with `@vue/compiler-sfc` to resolve [CVE-2024-6783](https://nvd.nist.gov/vuln/detail/CVE-2024-6783)
 
 ### Removed
 - Unused `vue-stepper-component` and `vue2-dropzone` dependencies
 
 ## [1.5.8] - 2024-06-23
 ### Security:
-- Bump `braces` to `3.0.3` to resolve [CVE-2024-4068]
-- Bump `ws` to resolve [CVE-2024-37890]
+- Bump `braces` to `3.0.3` to resolve [CVE-2024-4068](https://nvd.nist.gov/vuln/detail/CVE-2024-4068)
+- Bump `ws` to resolve [CVE-2024-37890](https://nvd.nist.gov/vuln/detail/CVE-2024-37890)
 
 ## [1.5.7] - 2024-05-30
 ### Fixed:
@@ -27,19 +37,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.5.6] - 2024-04-09
 ### Fixed:
 - Updated axios sub-dependency to use v0.28.0 to resolve security vulnerabilities:
-  - [CVE-2023-45857]
-  - [CVE-2024-28849]
-  - [CVE-2023-26159]
+  - [CVE-2023-45857](https://nvd.nist.gov/vuln/detail/CVE-2023-45857)
+  - [CVE-2024-28849](https://nvd.nist.gov/vuln/detail/CVE-2024-28849)
+  - [CVE-2023-26159](https://nvd.nist.gov/vuln/detail/CVE-2023-26159)
 
 - Re-generated package-lock to resolve security vulnerabilities:
-  - [CVE-2024-29180]
-  - [CVE-2023-42282]
-  - [CVE-2024-29041]
+  - [CVE-2024-29180](https://nvd.nist.gov/vuln/detail/CVE-2024-29180)
+  - [CVE-2023-42282](https://nvd.nist.gov/vuln/detail/CVE-2023-42282)
+  - [CVE-2024-29041](https://nvd.nist.gov/vuln/detail/CVE-2024-29041)
 
 ## [1.5.5] - 2023-10-20
 ### Fixed:
-- Updated crypto.js dependency to fix security vulnerabilities [CVE-2023-46233]
-- Updated react-dev-tools dependency to fix security vulnerabilities [CVE-2023-5654]
+- Updated crypto.js dependency to fix security vulnerabilities [CVE-2023-46233](https://nvd.nist.gov/vuln/detail/CVE-2023-46233)
+- Updated react-dev-tools dependency to fix security vulnerabilities [CVE-2023-5654](https://nvd.nist.gov/vuln/detail/CVE-2023-5654)
 - Update urllib3 dependency to v1.26.18
 
 ## [1.5.4] - 2023-10-20
