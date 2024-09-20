@@ -1,29 +1,22 @@
 <template>
   <div id="app">
-    <navbar/>
-    <router-view/>
+    <navbar />
+    <router-view />
   </div>
 </template>
 
 <script>
-import navbar from './components/navbar.vue'
-
+import navbar from "./components/navbar.vue";
 
 export default {
-  name: 'App',
+  name: "App",
   components: {
-    navbar
-  }
-}
-
+    navbar,
+  },
+};
 </script>
 
-
-
-
 <style>
-
-
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -31,6 +24,16 @@ export default {
 }
 
 .navbar.navbar-dark.bg-info.navbar-expand {
-  background-color: #232F3E!important;
+  background-color: #232f3e !important;
+}
+
+a,
+button {
+  text-decoration: none !important;
+}
+
+a:hover,
+button:hover {
+  text-decoration: underline !important;
 }
 </style>

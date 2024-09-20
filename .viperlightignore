@@ -19,7 +19,6 @@ Config
 @aws-amplify/api=4.0.64 
 @aws-amplify/core=4.7.15
 aws-amplify=4.3.46
-bootstrap=4.6.2
 vue-router=3.6.5
 eslint=7.32.0
 eslint-plugin-vue=7.20.0

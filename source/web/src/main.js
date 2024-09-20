@@ -1,12 +1,13 @@
 import Vue from 'vue'
+import { createApp } from 'vue'
 import App from './App.vue'
-import {BootstrapVue, BootstrapVueIcons} from 'bootstrap-vue'
 
 import Amplify, * as AmplifyModules from 'aws-amplify'
 import { AmplifyPlugin } from 'aws-amplify-vue'
 
+import 'bootstrap/dist/js/bootstrap.bundle.min.js';
+import 'bootstrap-icons/font/bootstrap-icons.css';
 import 'bootstrap/dist/css/bootstrap.css'
-import 'bootstrap-vue/dist/bootstrap-vue.css'
 
 import router from './router.js'
 
@@ -48,12 +49,7 @@ getRuntimeConfig().then(function(json) {
   });
 
   Vue.use(AmplifyPlugin, AmplifyModules)
-
-  Vue.use(BootstrapVue)
-  Vue.use(BootstrapVueIcons)
   
-  new Vue({
-    router,
-    render: h => h(App),
-    }).$mount('#app')
+  const app = createApp({router, ...App})
+  app.mount('#app');
 });
