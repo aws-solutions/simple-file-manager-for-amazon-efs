@@ -1,5 +1,6 @@
 ^dist/
 CODE_OF_CONDUCT.md:4
+SECURITY.md:10
 CONTRIBUTING.md:50
 .github/workflows/nightly-workflow.yml:19
 .github/workflows/nightly-workflow.yml:18

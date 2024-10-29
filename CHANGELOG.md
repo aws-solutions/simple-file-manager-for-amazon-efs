@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.11] - 2024-10-29
+### Security: 
+- Bump http-proxy-middleware to `2.0.7` to resolve [cve-2024-21536](https://github.com/advisories/GHSA-c7qv-q95q-8v27)
+- Bump cookie to `0.7.0` to resolve CVE [ CVE-2024-47764](https://github.com/advisories/GHSA-pxg6-pf52-xh8x)  
+
 ## [1.5.10] - 2024-09-20
 ### Security: 
 - Bump webpack to `5.94.0` to resolve [CVE-2024-43788](https://github.com/advisories/GHSA-4vvj-4cpr-p986)

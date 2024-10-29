@@ -55,11 +55,13 @@
   "overrides": {
     "fast-xml-parser": "4.4.1",
     "postcss": "8.4.31",
-    "axios": "0.28.0"
+    "axios": "0.28.0",
+    "cookie": "0.7.0"
   },
   "resolutions": {
     "fast-xml-parser": "4.4.1",
     "postcss": "8.4.31",
-    "axios": "0.28.0"
+    "axios": "0.28.0",
+    "cookie": "0.7.0"
   }
 }
