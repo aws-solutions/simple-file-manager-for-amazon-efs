@@ -181,7 +181,7 @@ cfn_describe_stacks_response = {
                 ],
                 'MonitoringTimeInMinutes': 123
             },
-            'StackStatus': 'CREATE_COMPLETE',
+            'StackStatus': 'UPDATE_COMPLETE',
             'StackStatusReason': 'string',
             'DisableRollback': True,
             'NotificationARNs': [

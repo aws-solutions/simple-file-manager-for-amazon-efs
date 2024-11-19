@@ -101,7 +101,9 @@ def format_filesystem_response(filesystem):
         new_filesystem_object["managed"] = "Deleting"
     elif stack_status['Stacks'][0]['StackStatus'] == 'CREATE_IN_PROGRESS':
         new_filesystem_object["managed"] = "Creating"
-    elif stack_status['Stacks'][0]['StackStatus'] == 'CREATE_COMPLETE':
+    elif stack_status['Stacks'][0]['StackStatus'] == 'UPDATE_IN_PROGRESS':
+        new_filesystem_object["managed"] = "Updating"
+    elif stack_status['Stacks'][0]['StackStatus'] in ['CREATE_COMPLETE', 'UPDATE_COMPLETE', 'UPDATE_ROLLBACK_COMPLETE']:
         new_filesystem_object["managed"] = True
 
     new_filesystem_object["file_system_id"] = filesystem_id
@@ -476,7 +478,7 @@ def delete_filesystem_lambda(filesystem_id):
     :raises ChaliceViewError, BadRequestError
     """
     stack_status = describe_manager_stack(filesystem_id)
-    if stack_status['Stacks'][0]['StackStatus'] == 'CREATE_COMPLETE':
+    if stack_status['Stacks'][0]['StackStatus'] in ['CREATE_COMPLETE', 'UPDATE_COMPLETE', 'UPDATE_ROLLBACK_COMPLETE']:
         try:
             delete_stack = delete_manager_stack(filesystem_id)
             app.log.info(delete_stack)
