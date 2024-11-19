@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.12] - 2024-11-19
+### Security:
+- Bump cross-spawn to `7.0.6` to resolve [CVE-2024-9506](https://github.com/advisories/GHSA-5j4c-8p2g-v4jx)
+
+### Fixed:
+- If a filesystem's stack changes from CREATE_COMPLETE to UPDATE_COMPLETE it no longer lists as managed [#229](https://github.com/aws-solutions/simple-file-manager-for-amazon-efs/issues/229)
+
 ## [1.5.11] - 2024-10-29
 ### Security: 
 - Bump http-proxy-middleware to `2.0.7` to resolve [cve-2024-21536](https://github.com/advisories/GHSA-c7qv-q95q-8v27)
