@@ -57,13 +57,15 @@
     "postcss": "8.4.31",
     "axios": "0.28.0",
     "cookie": "0.7.0",
-    "cross-spawn": "^7.0.6"
+    "cross-spawn": "^7.0.6",
+    "vue": "^3.4.34"
   },
   "resolutions": {
     "fast-xml-parser": "4.4.1",
     "postcss": "8.4.31",
     "axios": "0.28.0",
     "cookie": "0.7.0",
-    "cross-spawn": "^7.0.6"
+    "cross-spawn": "^7.0.6",
+    "vue": "^3.4.34"
   }
 }
