@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.13] - 2025-02-06
+### Security: 
+- Bump nanoid to `3.3.8` to resolve CVE [CVE-2024-55565](https://github.com/advisories/GHSA-mwcw-c2x4-8c55)
+- Bump path-to-regexp to`0.1.12` to resolve CVE [CVE-2024-52798](https://github.com/advisories/GHSA-rhx6-c78j-4q9w)
+- Override vue dependencies to `3.4.34` to resolve CVE [CVE-2024-9506](https://github.com/advisories/GHSA-5j4c-8p2g-v4jx)
+
 ## [1.5.12] - 2024-11-19
 ### Security:
 - Bump cross-spawn to `7.0.6` to resolve [CVE-2024-9506](https://github.com/advisories/GHSA-5j4c-8p2g-v4jx)
@@ -13,8 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.5.11] - 2024-10-29
 ### Security: 
-- Bump http-proxy-middleware to `2.0.7` to resolve [cve-2024-21536](https://github.com/advisories/GHSA-c7qv-q95q-8v27)
-- Bump cookie to `0.7.0` to resolve CVE [ CVE-2024-47764](https://github.com/advisories/GHSA-pxg6-pf52-xh8x)  
+- Bump http-proxy-middleware to `2.0.7` to resolve [CVE-2024-21536](https://github.com/advisories/GHSA-c7qv-q95q-8v27)
+- Bump cookie to `0.7.0` to resolve CVE [CVE-2024-47764](https://github.com/advisories/GHSA-pxg6-pf52-xh8x)  
 
 ## [1.5.10] - 2024-09-20
 ### Security: 
