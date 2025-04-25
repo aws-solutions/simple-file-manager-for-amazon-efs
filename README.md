@@ -1,7 +1,7 @@
-
+# Deprecation Notice 
+**Simple File Manager for Amazon EFS will be deprecated and AWS support for the solution will end on November 3rd, 2025. You will no longer be able to make new deployments of the solution after this date from the AWS Solutions Library. The GitHub repository will be archived. You must fork this repository to maintain a custom build of this solution if you would like to continue using this software. The change in support for this solution will have no material impact on the underlying Amazon Elastic File System (EFS) functionality.**
 
 ![SFM logo](docs/assets/images/sfm_logo.svg)
-
 
 Simple File Manager provides access to Amazon EFS through a RESTful API and responsive web app. Together, these components allow you the ability to manage data in your Amazon EFS filesystem from any location or device that can access the internet. You simply log-in to the Simple File Manager application from a web browser and directly upload, view, delete, or download data from any filesystem in your AWS account. All without the need to setup or maintain any dedicated EC2 or networking infrastructure.
 
