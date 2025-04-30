@@ -1,5 +1,4 @@
-⚠️🚨⚠️ __Important: Simple File Manager for Amazon EFS solution will retire in November 2025. We encourage customers to explore [mounting their EFS file systems to an OS](https://docs.aws.amazon.com/efs/latest/ug/mounting-fs.html) via an EC2 instance.You can also find other solutions in the [AWS Solutions Library](https://aws.amazon.com/solutions/new-to-aws/?solutions-all.sort-by=item.additionalFields.dxate&solutions-all.sort-order=desc&awsf.solution-type=*all&awsf.solution-area-1=*all&awsf.solution-area-2=*all&awsf.solution-area-3=*all&awsf.solution-area-4=*all&awsf.solution-area-5=*all&awsf.solution-area-6=*all&awsf.solution-area-7=*all&awsf.solution-area-8=*all).__ ⚠️🚨⚠️
-
+⚠️🚨⚠️ __Important: This solution will retire in November 2025. Until then, deployments (via CloudFormation or GitHub) will remain operational, but customers will assume responsibility for maintenance and API-related updates after support ends.__ ⚠️🚨⚠️
 
 ![SFM logo](docs/assets/images/sfm_logo.svg)
 
