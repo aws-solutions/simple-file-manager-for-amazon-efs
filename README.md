@@ -1,5 +1,6 @@
 ⚠️🚨⚠️ __Important: This solution will retire in November 2025. Until then, deployments (via CloudFormation or GitHub) will remain operational, but customers will assume responsibility for maintenance and API-related updates after support ends.__ ⚠️🚨⚠️
 
+
 ![SFM logo](docs/assets/images/sfm_logo.svg)
 
 

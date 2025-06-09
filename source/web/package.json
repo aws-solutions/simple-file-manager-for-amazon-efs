@@ -15,10 +15,10 @@
     "@vue/compat": "^3.4.34",
     "aws-amplify": "^4.3.43",
     "aws-amplify-vue": "2.1.5",
-    "aws-sdk": "^2.1354.0",
     "bootstrap": "^5.3.3",
     "bootstrap-icons": "^1.11.3",
     "core-js": "^3.6.5",
+    "http-proxy-middleware": "^2.0.9",
     "vue": "^3.4.34",
     "vue-router": "^3.4.3",
     "webpack": "^5.94.0"
@@ -58,7 +58,8 @@
     "axios": "1.8.2",
     "cookie": "0.7.0",
     "cross-spawn": "^7.0.6",
-    "vue": "^3.4.34"
+    "vue": "^3.4.34",
+    "webpack-dev-server": "^5.2.2"
   },
   "resolutions": {
     "fast-xml-parser": "4.4.1",
