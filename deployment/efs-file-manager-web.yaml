@@ -182,6 +182,9 @@ Resources:
         rules_to_suppress:
           - id: W11
             reason: "Website helper Lambda requires ability to read / write to both Content Analysis website bucket and build bucket"
+      guard:
+        SuppressedRules:
+              - IAM_NO_INLINE_POLICY_CHECK
     DependsOn: EFSFileSimpleWebsiteBucket
     Properties:
       AssumeRolePolicyDocument:

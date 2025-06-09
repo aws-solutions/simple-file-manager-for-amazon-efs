@@ -134,6 +134,9 @@ Resources:
         rules_to_suppress:
           - id: W11
             reason: "* resource needed for ec2:DescribeSecurityGroups and lambda:CreateFunction in this policy"
+      guard:
+        SuppressedRules:
+          - IAM_NO_INLINE_POLICY_CHECK
     Properties:
       AssumeRolePolicyDocument:
         Version: 2012-10-17

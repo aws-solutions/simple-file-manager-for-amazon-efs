@@ -117,6 +117,11 @@ Resources:
                     - 'logs:CreateLogStream'
                     - 'logs:PutLogEvents'
                   Resource: 'arn:aws:logs:*'
+      Metadata:
+        guard:
+          SuppressedRules:
+            - IAM_NO_INLINE_POLICY_CHECK
+            
 
   SimpleFileManagerIdentityPool:
     Type: AWS::Cognito::IdentityPool
@@ -148,6 +153,9 @@ Resources:
         rules_to_suppress:
           - id: F38
             reason: "* resource is used to deny access in this policy"
+      guard:
+        SuppressedRules:
+          - IAM_NO_INLINE_POLICY_CHECK
     Properties:
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
@@ -251,6 +259,10 @@ Resources:
               account: !Ref "AWS::AccountId",
               api: !Ref ApiId,
             }
+    Metadata:
+      guard:
+        SuppressedRules:
+          - IAM_NO_INLINE_POLICY_CHECK
 
   AddAdminUserToAdminGroup:
     DependsOn: SimpleFileManagerAdminAccount

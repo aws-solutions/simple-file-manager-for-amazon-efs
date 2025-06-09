@@ -1,3 +1,5 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
 export function secondsToStr (temp) {
   const years = Math.floor(temp / 31536000)
   if (years) {
