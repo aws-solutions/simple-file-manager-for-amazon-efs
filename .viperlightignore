@@ -15,6 +15,7 @@ deployment/simple-file-manager-for-amazon-efs.yaml:84
 deployment/simple-file-manager-for-amazon-efs.yaml:69
 test/
 Config
+source/web/package-lock.json
 
 [node-npmoutdated]
 @aws-amplify/api=4.0.64 
