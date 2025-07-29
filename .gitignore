@@ -8,6 +8,7 @@
 **/out-tsc
 **/.chalice/deployments
 **/source/helper/webapp-manifest.json
+build
 
 # dependencies
 **/node_modules

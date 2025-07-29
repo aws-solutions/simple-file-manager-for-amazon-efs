@@ -1186,9 +1186,20 @@ requests_toolbelt under the Apache-2.0 license.
 urllib3 under the MIT license.
 actions/checkout under the MIT license.
 aws-actions/configure-aws-credentials under the MIT license.
-nashmaniac/create-issue-action license unknown or missing
 stelligent/cfn_nag under the MIT license.
 nanasess/setup-chromedriver under the MIT license.
+is-inside-container under the MIT license.
+default-browser under the MIT license.
+bundle-name under the MIT license.
+run-applescript under the MIT license.
+default-browser-id under the MIT license.
+is-network-error under the MIT license.
+@jsonjoy.com/base64 under the Apache-2.0 license.
+@jsonjoy.com/json-pack under the Apache-2.0 license.
+hyperdyperid under the MIT license.
+@jsonjoy.com/util under the Apache-2.0 license.
+thingies under the Unlicense license.
+tree-dump under the Apache-2.0 license.
 
 ********************
 OPEN SOURCE LICENSES
