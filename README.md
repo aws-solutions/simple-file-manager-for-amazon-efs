@@ -101,6 +101,11 @@ The main template is called efs-file-manager.template
 
 * Deploy the solution to your account by launching a new AWS CloudFormation stack using the link of the solution template in Amazon S3.
 
+***
+
+## Data Collection
+
+This solution sends operational metrics to AWS (the “Data”) about the use of this solution. We use this Data to better understand how customers use this solution and related services and products. AWS’s collection of this Data is subject to the [AWS Privacy Notice](https://aws.amazon.com/privacy/).
 
 
 ***
