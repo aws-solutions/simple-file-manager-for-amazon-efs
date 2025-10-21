@@ -3,6 +3,10 @@ name: scheduled-workflow
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   build-us-west-2:
     runs-on: ubuntu-latest
