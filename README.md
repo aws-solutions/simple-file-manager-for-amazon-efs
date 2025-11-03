@@ -1,4 +1,5 @@
-⚠️🚨⚠️ __Important: This solution will retire in November 2025. Until then, deployments (via CloudFormation or GitHub) will remain operational, but customers will assume responsibility for maintenance and API-related updates after support ends.__ ⚠️🚨⚠️
+⚠️🚨⚠️ Simple File Manager for Amazon EFS has been deprecated. Customers assume responsibility for maintenance and API-related updates. 
+You can find other AWS Solutions in the [AWS Solutions Library](https://aws.amazon.com/solutions/). ⚠️🚨⚠️
 
 
 ![SFM logo](docs/assets/images/sfm_logo.svg)
